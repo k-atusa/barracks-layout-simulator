@@ -1,32 +1,32 @@
-# 🏠 Barracks Layout Simulator (배럭 레이아웃 시뮬레이터)
+# 🏠 Barracks Layout Simulator
 
-미군부대 배럭 내 가구 배치를 시뮬레이션하는 웹 애플리케이션입니다. Three.js를 기반으로 2D/3D 전환이 가능하며, 최적의 공간 활용 배치를 찾을 수 있습니다.
+A web application for simulating furniture layouts in military barracks. Built with Three.js and supports 2D/3D view switching to help find space-efficient layouts.
 
-## ✨ 주요 기능
+## ✨ Key Features
 
-### 🎨 뷰 모드
-- **2D 뷰**: 평면도로 가구 배치를 확인하고 편집
-- **3D 뷰**: 실제 모습처럼 입체적으로 확인 (OrbitControls로 시점 조절)
+### 🎨 View Modes
+- **2D View**: Plan view for quick layout editing
+- **3D View**: Immersive view with OrbitControls camera
 
-### 🪑 지원 가구
-- 싱글 침대 / 이층 침대
-- 책상 / 의자
-- 서랍장 / 락커 / 풋락커
-- 협탁 / 휴지통
+### 🪑 Supported Furniture
+- Single bed / bunk bed
+- Desk / chair
+- Dresser / locker / footlocker
+- Nightstand / trash bin
 
-### 🔧 기능
-- **드래그 앤 드롭**: 좌측 패널에서 가구를 캔버스로 드래그하여 배치
-- **회전**: R키 또는 더블클릭으로 가구 회전
-- **그리드 스냅**: 정렬된 배치를 위한 자동 스냅
-- **충돌 감지**: 가구 간 겹침 감지 및 표시
-- **방 크기 조절**: 원하는 방 크기로 변경 가능
-- **저장/불러오기**: JSON 형식으로 레이아웃 저장 및 불러오기
-- **자동 배치**: 표준 배럭 스타일로 자동 정렬
-- **공간 최적화**: 벽면 정렬 및 회전 최적화
+### 🔧 Functionality
+- **Drag & Drop**: Drag furniture from the left panel onto the canvas
+- **Rotate**: Rotate with the R key or double-click
+- **Grid Snap**: Align furniture neatly on the grid
+- **Collision Detection**: Highlights overlapping furniture
+- **Room Size**: Adjust room dimensions
+- **Save/Load**: Export and import layouts as JSON
+- **Auto Arrange**: Standard barracks arrangement
+- **Space Optimization**: Align to walls and snap rotations
 
-## 🚀 실행 방법
+## 🚀 How to Run
 
-### 로컬 서버 실행
+### Local Server
 
 ```bash
 # Python 3
@@ -39,57 +39,57 @@ npx serve .
 php -S localhost:8080
 ```
 
-브라우저에서 `http://localhost:8080` 접속
+Open `http://localhost:8080` in your browser.
 
 ### VS Code Live Server
-VS Code의 Live Server 확장 프로그램을 사용하여 실행할 수도 있습니다.
+You can also run it using the Live Server extension.
 
-## 🎮 조작 방법
+## 🎮 Controls
 
-### 2D 모드
-- **가구 추가**: 좌측 패널에서 캔버스로 드래그
-- **가구 이동**: 가구 클릭 후 드래그
-- **가구 회전**: R키 또는 더블클릭
-- **가구 삭제**: Delete 또는 Backspace 키
-- **확대/축소**: 마우스 휠
+### 2D Mode
+- **Add furniture**: Drag from the left panel to the canvas
+- **Move**: Click and drag furniture
+- **Rotate**: R key or double-click
+- **Delete**: Delete or Backspace
+- **Zoom**: Mouse wheel
 
-### 3D 모드
-- **시점 회전**: 마우스 드래그
-- **확대/축소**: 마우스 휠
-- **시점 이동**: 마우스 우클릭 드래그
+### 3D Mode
+- **Orbit**: Mouse drag
+- **Zoom**: Mouse wheel
+- **Pan**: Right mouse drag
 
-## 🛠 기술 스택
+## 🛠 Tech Stack
 
-- **Three.js** - 3D 렌더링
-- **Vanilla JavaScript** - 메인 로직 (ES6 모듈)
-- **CSS3** - 스타일링 및 반응형 디자인
-- **HTML5 Canvas** - 2D 렌더링
+- **Three.js** — 3D rendering
+- **Vanilla JavaScript** — main logic (ES modules)
+- **CSS3** — styling and responsive layout
+- **HTML5 Canvas** — 2D rendering
 
-## 📁 프로젝트 구조
+## 📁 Project Structure
 
 ```
 barracks-layout-simulator/
-├── index.html          # 메인 HTML 파일
+├── index.html          # Main HTML file
 ├── css/
-│   └── style.css       # 스타일시트
+│   └── style.css       # Styles
 ├── js/
-│   ├── app.js          # 메인 애플리케이션 로직
-│   ├── furniture.js    # 가구 정의 및 생성
-│   ├── room.js         # 방 생성 및 관리
-│   └── collision.js    # 충돌 감지 및 자동 배치
+│   ├── app.js          # App logic
+│   ├── furniture.js    # Furniture definitions & mesh creation
+│   ├── room.js         # Room creation & management
+│   └── collision.js    # Collision detection & auto-arrange
 ├── README.md
 └── LICENSE
 ```
 
-## 📋 향후 개선 사항
+## 📋 Roadmap
 
-- [ ] 가구 크기 조절 기능
-- [ ] 더 많은 가구 종류 추가
-- [ ] 복수 인원 배럭 지원
-- [ ] 이미지 내보내기 기능
-- [ ] 레이아웃 공유 기능
-- [ ] 모바일 터치 지원 개선
+- [ ] Furniture resizing
+- [ ] More furniture types
+- [ ] Multi-room support
+- [ ] Export image snapshots
+- [ ] Layout sharing
+- [ ] Improved mobile touch support
 
-## 📄 라이선스
+## 📄 License
 
 MIT License

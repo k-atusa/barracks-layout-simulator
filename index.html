@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>배럭 레이아웃 시뮬레이터 | Barracks Layout Simulator</title>
+  <title>Barracks Layout Simulator</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 
@@ -23,72 +23,72 @@
     <div class="main-container">
       <!-- Left Sidebar - Furniture Panel -->
       <aside class="sidebar furniture-panel">
-        <h2>가구 목록 (Furniture)</h2>
+        <h2>Furniture Catalog</h2>
 
         <div class="furniture-category">
-          <h3>🛏️ 침대 (Beds)</h3>
+          <h3>🛏️ Beds</h3>
           <div class="furniture-items">
             <div class="furniture-item" data-type="single-bed" draggable="true">
               <div class="furniture-icon">🛏️</div>
-              <span>싱글 침대</span>
+              <span>Single Bed</span>
               <small>90x200cm</small>
             </div>
             <div class="furniture-item" data-type="bunk-bed" draggable="true">
               <div class="furniture-icon">🛏️</div>
-              <span>이층 침대</span>
+              <span>Bunk Bed</span>
               <small>90x200cm</small>
             </div>
           </div>
         </div>
 
         <div class="furniture-category">
-          <h3>🪑 책상 & 의자 (Desks)</h3>
+          <h3>🪑 Desks & Chairs</h3>
           <div class="furniture-items">
             <div class="furniture-item" data-type="desk" draggable="true">
               <div class="furniture-icon">🪑</div>
-              <span>책상</span>
+              <span>Desk</span>
               <small>120x60cm</small>
             </div>
             <div class="furniture-item" data-type="chair" draggable="true">
               <div class="furniture-icon">🪑</div>
-              <span>의자</span>
+              <span>Chair</span>
               <small>45x45cm</small>
             </div>
           </div>
         </div>
 
         <div class="furniture-category">
-          <h3>🗄️ 수납 (Storage)</h3>
+          <h3>🗄️ Storage</h3>
           <div class="furniture-items">
             <div class="furniture-item" data-type="dresser" draggable="true">
               <div class="furniture-icon">🗄️</div>
-              <span>서랍장</span>
+              <span>Dresser</span>
               <small>80x45cm</small>
             </div>
             <div class="furniture-item" data-type="locker" draggable="true">
               <div class="furniture-icon">🚪</div>
-              <span>락커</span>
+              <span>Locker</span>
               <small>60x60cm</small>
             </div>
             <div class="furniture-item" data-type="footlocker" draggable="true">
               <div class="furniture-icon">📦</div>
-              <span>풋락커</span>
+              <span>Footlocker</span>
               <small>90x45cm</small>
             </div>
           </div>
         </div>
 
         <div class="furniture-category">
-          <h3>🪟 기타 (Others)</h3>
+          <h3>🪟 Others</h3>
           <div class="furniture-items">
             <div class="furniture-item" data-type="nightstand" draggable="true">
               <div class="furniture-icon">🪟</div>
-              <span>협탁</span>
+              <span>Nightstand</span>
               <small>40x40cm</small>
             </div>
             <div class="furniture-item" data-type="trash-bin" draggable="true">
               <div class="furniture-icon">🗑️</div>
-              <span>휴지통</span>
+              <span>Trash Bin</span>
               <small>30x30cm</small>
             </div>
           </div>
@@ -102,100 +102,100 @@
           <canvas id="canvas-3d"></canvas>
         </div>
         <div class="canvas-info">
-          <span id="room-size">방 크기: 6m x 4m</span>
-          <span id="space-usage">공간 활용률: 0%</span>
-          <span id="furniture-count">가구 수: 0개</span>
+          <span id="room-size">Room Size: 6m x 4m</span>
+          <span id="space-usage">Space Usage: 0%</span>
+          <span id="furniture-count">Furniture Count: 0</span>
         </div>
       </main>
 
       <!-- Right Sidebar - Properties Panel -->
       <aside class="sidebar properties-panel">
-        <h2>속성 (Properties)</h2>
+        <h2>Properties</h2>
 
         <div class="property-section room-settings">
-          <h3>📐 방 설정 (Room)</h3>
+          <h3>📐 Room Settings</h3>
           <div class="property-row">
-            <label>가로 (Width)</label>
+            <label>Width</label>
             <input type="number" id="room-width" value="6" min="3" max="15" step="0.5">
             <span>m</span>
           </div>
           <div class="property-row">
-            <label>세로 (Depth)</label>
+            <label>Depth</label>
             <input type="number" id="room-depth" value="4" min="3" max="15" step="0.5">
             <span>m</span>
           </div>
           <div class="property-row">
-            <label>높이 (Height)</label>
+            <label>Height</label>
             <input type="number" id="room-height" value="2.8" min="2" max="4" step="0.1">
             <span>m</span>
           </div>
-          <button id="apply-room-size" class="btn-primary">적용</button>
+          <button id="apply-room-size" class="btn-primary">Apply</button>
         </div>
 
         <div class="property-section selected-furniture" id="selected-furniture-panel" style="display: none;">
-          <h3>🪑 선택된 가구</h3>
+          <h3>🪑 Selected Furniture</h3>
           <div class="property-row">
-            <label>이름</label>
+            <label>Name</label>
             <span id="selected-name">-</span>
           </div>
           <div class="property-row">
-            <label>X 위치</label>
+            <label>X Position</label>
             <input type="number" id="pos-x" step="0.1">
             <span>m</span>
           </div>
           <div class="property-row">
-            <label>Z 위치</label>
+            <label>Z Position</label>
             <input type="number" id="pos-z" step="0.1">
             <span>m</span>
           </div>
           <div class="property-row">
-            <label>회전</label>
+            <label>Rotation</label>
             <input type="number" id="rotation" value="0" min="0" max="360" step="15">
             <span>°</span>
           </div>
           <div class="property-buttons">
             <button id="rotate-left" class="btn-secondary">↺ 90°</button>
             <button id="rotate-right" class="btn-secondary">↻ 90°</button>
-            <button id="delete-furniture" class="btn-danger">🗑️ 삭제</button>
+            <button id="delete-furniture" class="btn-danger">🗑️ Delete</button>
           </div>
         </div>
 
         <div class="property-section">
-          <h3>⚙️ 옵션 (Options)</h3>
+          <h3>⚙️ Options</h3>
           <div class="property-row checkbox-row">
             <input type="checkbox" id="show-grid" checked>
-            <label for="show-grid">그리드 표시</label>
+            <label for="show-grid">Show Grid</label>
           </div>
           <div class="property-row checkbox-row">
             <input type="checkbox" id="show-walls" checked>
-            <label for="show-walls">벽 표시</label>
+            <label for="show-walls">Show Walls</label>
           </div>
           <div class="property-row checkbox-row">
             <input type="checkbox" id="snap-to-grid" checked>
-            <label for="snap-to-grid">그리드 스냅</label>
+            <label for="snap-to-grid">Snap to Grid</label>
           </div>
           <div class="property-row checkbox-row">
             <input type="checkbox" id="show-dimensions">
-            <label for="show-dimensions">치수 표시</label>
+            <label for="show-dimensions">Show Dimensions</label>
           </div>
           <div class="property-row checkbox-row">
             <input type="checkbox" id="collision-detection" checked>
-            <label for="collision-detection">충돌 감지</label>
+            <label for="collision-detection">Collision Detection</label>
           </div>
         </div>
 
         <div class="property-section">
-          <h3>💾 저장/불러오기</h3>
-          <button id="save-layout" class="btn-primary">💾 레이아웃 저장</button>
-          <button id="load-layout" class="btn-secondary">📂 레이아웃 불러오기</button>
-          <button id="clear-all" class="btn-danger">🗑️ 전체 삭제</button>
+          <h3>💾 Save/Load</h3>
+          <button id="save-layout" class="btn-primary">💾 Save Layout</button>
+          <button id="load-layout" class="btn-secondary">📂 Load Layout</button>
+          <button id="clear-all" class="btn-danger">🗑️ Clear All</button>
           <input type="file" id="file-input" accept=".json" style="display: none;">
         </div>
 
         <div class="property-section">
-          <h3>📊 최적화</h3>
-          <button id="auto-arrange" class="btn-primary">🔄 자동 배치</button>
-          <button id="optimize-space" class="btn-secondary">📐 공간 최적화</button>
+          <h3>📊 Optimization</h3>
+          <button id="auto-arrange" class="btn-primary">🔄 Auto Arrange</button>
+          <button id="optimize-space" class="btn-secondary">📐 Optimize Space</button>
         </div>
       </aside>
     </div>
@@ -203,10 +203,10 @@
     <!-- Footer -->
     <footer class="footer">
       <div class="controls-hint">
-        <span>🖱️ 드래그: 가구 이동</span>
-        <span>🔄 R: 회전</span>
-        <span>🗑️ Delete: 삭제</span>
-        <span>📷 3D: 마우스로 시점 조절</span>
+        <span>🖱️ Drag: Move furniture</span>
+        <span>🔄 R: Rotate</span>
+        <span>🗑️ Delete: Remove</span>
+        <span>📷 3D: Mouse to orbit</span>
       </div>
     </footer>
   </div>

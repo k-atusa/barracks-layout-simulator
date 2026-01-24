@@ -1,7 +1,7 @@
 // Furniture definitions and factory
 export const FURNITURE_TYPES = {
   'single-bed': {
-    name: '싱글 침대',
+    name: 'Single Bed',
     nameEn: 'Single Bed',
     width: 0.9,      // meters
     depth: 2.0,
@@ -10,7 +10,7 @@ export const FURNITURE_TYPES = {
     icon: '🛏️'
   },
   'bunk-bed': {
-    name: '이층 침대',
+    name: 'Bunk Bed',
     nameEn: 'Bunk Bed',
     width: 0.9,
     depth: 2.0,
@@ -19,7 +19,7 @@ export const FURNITURE_TYPES = {
     icon: '🛏️'
   },
   'desk': {
-    name: '책상',
+    name: 'Desk',
     nameEn: 'Desk',
     width: 1.2,
     depth: 0.6,
@@ -28,7 +28,7 @@ export const FURNITURE_TYPES = {
     icon: '🪑'
   },
   'chair': {
-    name: '의자',
+    name: 'Chair',
     nameEn: 'Chair',
     width: 0.45,
     depth: 0.45,
@@ -37,7 +37,7 @@ export const FURNITURE_TYPES = {
     icon: '🪑'
   },
   'dresser': {
-    name: '서랍장',
+    name: 'Dresser',
     nameEn: 'Dresser',
     width: 0.8,
     depth: 0.45,
@@ -46,7 +46,7 @@ export const FURNITURE_TYPES = {
     icon: '🗄️'
   },
   'locker': {
-    name: '락커',
+    name: 'Locker',
     nameEn: 'Locker',
     width: 0.6,
     depth: 0.6,
@@ -55,7 +55,7 @@ export const FURNITURE_TYPES = {
     icon: '🚪'
   },
   'footlocker': {
-    name: '풋락커',
+    name: 'Footlocker',
     nameEn: 'Footlocker',
     width: 0.9,
     depth: 0.45,
@@ -64,7 +64,7 @@ export const FURNITURE_TYPES = {
     icon: '📦'
   },
   'nightstand': {
-    name: '협탁',
+    name: 'Nightstand',
     nameEn: 'Nightstand',
     width: 0.4,
     depth: 0.4,
@@ -73,7 +73,7 @@ export const FURNITURE_TYPES = {
     icon: '🪟'
   },
   'trash-bin': {
-    name: '휴지통',
+    name: 'Trash Bin',
     nameEn: 'Trash Bin',
     width: 0.3,
     depth: 0.3,

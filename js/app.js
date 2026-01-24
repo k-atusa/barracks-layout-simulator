@@ -578,7 +578,7 @@ class BarracksSimulator {
   }
 
   clearAll() {
-    if (!confirm('모든 가구를 삭제하시겠습니까?')) return;
+    if (!confirm('Delete all furniture?')) return;
 
     this.furniture.forEach(f => this.scene.remove(f));
     this.furniture = [];
@@ -595,7 +595,7 @@ class BarracksSimulator {
     this.room3D.showWalls(this.showWalls);
 
     document.getElementById('room-size').textContent =
-      `방 크기: ${this.roomWidth}m x ${this.roomDepth}m`;
+      `Room Size: ${this.roomWidth}m x ${this.roomDepth}m`;
 
     this.updateInfo();
     this.render();
@@ -626,9 +626,9 @@ class BarracksSimulator {
     );
 
     document.getElementById('space-usage').textContent =
-      `공간 활용률: ${utilization.toFixed(1)}%`;
+      `Space Usage: ${utilization.toFixed(1)}%`;
     document.getElementById('furniture-count').textContent =
-      `가구 수: ${this.furniture.length}개`;
+      `Furniture Count: ${this.furniture.length}`;
   }
 
   saveLayout() {
@@ -694,9 +694,9 @@ class BarracksSimulator {
         this.updateInfo();
         this.render();
 
-        alert('레이아웃을 불러왔습니다!');
+        alert('Layout loaded!');
       } catch (err) {
-        alert('파일을 불러오는데 실패했습니다.');
+        alert('Failed to load the file.');
         console.error(err);
       }
     };
@@ -706,7 +706,7 @@ class BarracksSimulator {
 
   autoArrange() {
     if (this.furniture.length === 0) {
-      alert('배치할 가구가 없습니다.');
+      alert('No furniture to arrange.');
       return;
     }
 
@@ -733,7 +733,7 @@ class BarracksSimulator {
 
   optimizeSpace() {
     if (this.furniture.length === 0) {
-      alert('최적화할 가구가 없습니다.');
+      alert('No furniture to optimize.');
       return;
     }
 
