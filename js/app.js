@@ -72,7 +72,6 @@ class BarracksSimulator {
   }
 
   setup3D() {
-    // Scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x1a1a2e);
 
@@ -420,11 +419,16 @@ class BarracksSimulator {
   }
 
   onKeyDown(e) {
+    // Ignore shortcuts when typing in inputs
+    const tagName = e.target?.tagName?.toLowerCase();
+    if (tagName === 'input' || tagName === 'textarea' || e.target?.isContentEditable) {
+      return;
+    }
+
     if (!this.selectedFurniture) return;
 
-    switch (e.key) {
-      case 'r':
-      case 'R':
+    switch (e.code) {
+      case 'KeyR':
         this.rotateSelected(e.shiftKey ? -15 : 15);
         break;
       case 'Delete':
