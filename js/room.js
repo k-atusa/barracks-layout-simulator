@@ -35,12 +35,14 @@ export class Room {
     floor.name = 'floor';
     this.group.add(floor);
 
-    // Floor pattern (tiles)
+    // Floor pattern (tiles) - used as the grid inside the room bounds
     const tileSize = 0.5;
     const tilesX = Math.floor(this.width / tileSize);
     const tilesZ = Math.floor(this.depth / tileSize);
 
     const linesMaterial = new THREE.LineBasicMaterial({ color: 0x6B6B5A, transparent: true, opacity: 0.3 });
+    const gridGroup = new THREE.Group();
+    gridGroup.name = 'grid';
 
     for (let i = 0; i <= tilesX; i++) {
       const geometry = new THREE.BufferGeometry().setFromPoints([
@@ -48,7 +50,7 @@ export class Room {
         new THREE.Vector3(-this.width / 2 + i * tileSize, 0.001, this.depth / 2)
       ]);
       const line = new THREE.Line(geometry, linesMaterial);
-      this.group.add(line);
+      gridGroup.add(line);
     }
 
     for (let i = 0; i <= tilesZ; i++) {
@@ -57,8 +59,11 @@ export class Room {
         new THREE.Vector3(this.width / 2, 0.001, -this.depth / 2 + i * tileSize)
       ]);
       const line = new THREE.Line(geometry, linesMaterial);
-      this.group.add(line);
+      gridGroup.add(line);
     }
+
+    this.grid = gridGroup;
+    this.group.add(gridGroup);
   }
 
   createWalls() {
@@ -68,13 +73,14 @@ export class Room {
       side: THREE.DoubleSide
     });
     const wallThickness = 0.1;
+    const wallOffset = wallThickness;
 
     // Back wall (negative Z)
     const backWall = new THREE.Mesh(
       new THREE.BoxGeometry(this.width, this.height, wallThickness),
       wallMaterial
     );
-    backWall.position.set(0, this.height / 2, -this.depth / 2 - wallThickness / 2);
+    backWall.position.set(0, this.height / 2, -this.depth / 2 - wallOffset);
     backWall.receiveShadow = true;
       backWall.name = 'wall';
     this.group.add(backWall);
@@ -85,7 +91,7 @@ export class Room {
       new THREE.BoxGeometry(wallThickness, this.height, this.depth),
       wallMaterial
     );
-    leftWall.position.set(-this.width / 2 - wallThickness / 2, this.height / 2, 0);
+    leftWall.position.set(-this.width / 2 - wallOffset, this.height / 2, 0);
     leftWall.receiveShadow = true;
       leftWall.name = 'wall';
     this.group.add(leftWall);
@@ -96,7 +102,7 @@ export class Room {
       new THREE.BoxGeometry(wallThickness, this.height, this.depth),
       wallMaterial
     );
-    rightWall.position.set(this.width / 2 + wallThickness / 2, this.height / 2, 0);
+    rightWall.position.set(this.width / 2 + wallOffset, this.height / 2, 0);
     rightWall.receiveShadow = true;
       rightWall.name = 'wall';
     this.group.add(rightWall);
@@ -113,6 +119,7 @@ export class Room {
     const doorWidth = 0.9;
     const doorHeight = 2.1;
     const doorX = -this.width / 4;
+    const wallOffset = wallThickness;
 
     // Left part of front wall
     const leftPartWidth = this.width / 2 + doorX - doorWidth / 2;
@@ -121,7 +128,7 @@ export class Room {
         new THREE.BoxGeometry(leftPartWidth, this.height, wallThickness),
         wallMaterial
       );
-      leftPart.position.set(-this.width / 2 + leftPartWidth / 2, this.height / 2, this.depth / 2 + wallThickness / 2);
+            leftPart.position.set(-this.width / 2 + leftPartWidth / 2, this.height / 2, this.depth / 2 + wallOffset);
         leftPart.name = 'wall';
       this.group.add(leftPart);
         this.walls.push(leftPart);
@@ -134,7 +141,7 @@ export class Room {
         new THREE.BoxGeometry(rightPartWidth, this.height, wallThickness),
         wallMaterial
       );
-      rightPart.position.set(this.width / 2 - rightPartWidth / 2, this.height / 2, this.depth / 2 + wallThickness / 2);
+            rightPart.position.set(this.width / 2 - rightPartWidth / 2, this.height / 2, this.depth / 2 + wallOffset);
         rightPart.name = 'wall';
       this.group.add(rightPart);
         this.walls.push(rightPart);
@@ -145,7 +152,7 @@ export class Room {
       new THREE.BoxGeometry(doorWidth, this.height - doorHeight, wallThickness),
       wallMaterial
     );
-    topPart.position.set(doorX, doorHeight + (this.height - doorHeight) / 2, this.depth / 2 + wallThickness / 2);
+    topPart.position.set(doorX, doorHeight + (this.height - doorHeight) / 2, this.depth / 2 + wallOffset);
       topPart.name = 'wall';
     this.group.add(topPart);
       this.walls.push(topPart);
@@ -222,17 +229,8 @@ export class Room {
   }
 
   createGrid() {
-    const THREE = this.THREE;
-    const gridHelper = new THREE.GridHelper(
-      Math.max(this.width, this.depth) * 1.5,
-      Math.max(this.width, this.depth) * 3,
-      0x444444,
-      0x333333
-    );
-    gridHelper.position.y = 0.002;
-    gridHelper.name = 'grid';
-    this.grid = gridHelper;
-    this.group.add(gridHelper);
+    // Grid is created in createFloor to ensure it stays inside the walls.
+    // This method is kept for compatibility.
   }
 
   showGrid(show) {
@@ -305,10 +303,16 @@ export function draw2DRoom(ctx, width, depth, scale, offsetX, offsetY) {
     ctx.stroke();
   }
 
-  // Walls
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = 8;
-  ctx.strokeRect(-roomWidth / 2, -roomDepth / 2, roomWidth, roomDepth);
+    // Walls (draw outside the grid boundary)
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 8;
+    const wallOffset = ctx.lineWidth / 2;
+    ctx.strokeRect(
+        -roomWidth / 2 - wallOffset,
+        -roomDepth / 2 - wallOffset,
+        roomWidth + wallOffset * 2,
+        roomDepth + wallOffset * 2
+    );
 
   // Door (front wall, bottom)
   const doorWidth = 0.9 * scale;

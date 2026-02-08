@@ -56,6 +56,7 @@ class BarracksSimulator {
     this.setup3D();
     this.setupEventListeners();
     this.setupUI();
+    this.addDefaultLayout();
     this.render();
   }
 
@@ -363,7 +364,7 @@ class BarracksSimulator {
 
     // Snap to grid
     if (this.snapToGrid) {
-      const gridSize = 0.25;
+      const gridSize = 0.1;
       newX = Math.round(newX / gridSize) * gridSize;
       newZ = Math.round(newZ / gridSize) * gridSize;
     }
@@ -486,7 +487,7 @@ class BarracksSimulator {
 
     // Snap to grid if enabled
     if (this.snapToGrid) {
-      const gridSize = 0.25;
+      const gridSize = 0.1;
       worldX = Math.round(worldX / gridSize) * gridSize;
       worldZ = Math.round(worldZ / gridSize) * gridSize;
     }
@@ -498,16 +499,7 @@ class BarracksSimulator {
     worldX = Math.max(bounds.minX + config.width / 2, Math.min(bounds.maxX - config.width / 2, worldX));
     worldZ = Math.max(bounds.minZ + config.depth / 2, Math.min(bounds.maxZ - config.depth / 2, worldZ));
 
-    // Create 3D furniture
-    const furniture = createFurnitureMesh(type, THREE);
-    furniture.position.set(worldX, 0, worldZ);
-
-    this.furniture.push(furniture);
-    this.scene.add(furniture);
-    this.collisionDetector.setFurniture(this.furniture);
-
-    // Select the new furniture
-    this.selectFurniture(this.furniture.length - 1);
+    this.addFurnitureAt(type, worldX, worldZ, 0, true);
 
     // Check collisions
     if (this.collisionDetection) {
@@ -516,6 +508,54 @@ class BarracksSimulator {
 
     this.updateInfo();
     this.render();
+  }
+
+  addFurnitureAt(type, x, z, rotation = 0, select = false) {
+    const furniture = createFurnitureMesh(type, THREE);
+    if (!furniture) return null;
+
+    furniture.position.set(x, 0, z);
+    furniture.rotation.y = rotation;
+
+    this.furniture.push(furniture);
+    this.scene.add(furniture);
+    this.collisionDetector.setFurniture(this.furniture);
+
+    if (select) {
+      this.selectFurniture(this.furniture.length - 1);
+    }
+
+    return furniture;
+  }
+
+  addDefaultLayout() {
+    const bounds = this.room3D.getFloorBounds();
+
+    // Single bed along the left wall
+    const bedConfig = FURNITURE_TYPES['single-bed'];
+    const bedX = bounds.minX + bedConfig.width / 2 + 0.1;
+    const bedZ = bounds.minZ + bedConfig.depth / 2 + 0.6;
+    this.addFurnitureAt('single-bed', bedX, bedZ, 0, false);
+
+    // Desk along the back wall
+    const deskConfig = FURNITURE_TYPES['desk'];
+    const deskX = bounds.minX + deskConfig.width / 2 + 1.6;
+    const deskZ = bounds.minZ + deskConfig.depth / 2 + 0.2;
+    this.addFurnitureAt('desk', deskX, deskZ, 0, false);
+
+    // 5-drawer dresser near the right wall
+    const dresser5Config = FURNITURE_TYPES['dresser-5'];
+    const dresser5X = bounds.maxX - dresser5Config.width / 2 - 0.2;
+    const dresser5Z = bounds.minZ + dresser5Config.depth / 2 + 0.8;
+    this.addFurnitureAt('dresser-5', dresser5X, dresser5Z, Math.PI, false);
+
+    // 2-drawer bedside chest at the foot of the bed
+    const bedDrawerConfig = FURNITURE_TYPES['bed-drawer-2'];
+    const bedDrawerX = bedX;
+    const bedDrawerZ = bedZ + bedConfig.depth / 2 + bedDrawerConfig.depth / 2 + 0.2;
+    this.addFurnitureAt('bed-drawer-2', bedDrawerX, bedDrawerZ, 0, false);
+
+    this.updateInfo();
   }
 
   selectFurniture(index) {

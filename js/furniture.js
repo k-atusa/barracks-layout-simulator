@@ -43,7 +43,28 @@ export const FURNITURE_TYPES = {
     depth: 0.45,
     height: 1.0,
     color: 0x6D4C41,
-    icon: '🗄️'
+    icon: '🗄️',
+    drawerCount: 4
+  },
+  'dresser-5': {
+    name: '5-Drawer Dresser',
+    nameEn: '5-Drawer Dresser',
+    width: 0.8,
+    depth: 0.45,
+    height: 1.2,
+    color: 0x6D4C41,
+    icon: '🗄️',
+    drawerCount: 5
+  },
+  'bed-drawer-2': {
+    name: '2-Drawer Bedside Chest',
+    nameEn: '2-Drawer Bedside Chest',
+    width: 0.9,
+    depth: 0.45,
+    height: 0.5,
+    color: 0x5D4037,
+    icon: '🗄️',
+    drawerCount: 2
   },
   'locker': {
     name: 'Locker',
@@ -125,6 +146,8 @@ export function createFurnitureMesh(type, THREE) {
       addLockerDetails(group, config, THREE);
       break;
     case 'dresser':
+    case 'dresser-5':
+    case 'bed-drawer-2':
       addDresserDetails(group, config, THREE);
       break;
   }
@@ -289,7 +312,7 @@ function addDresserDetails(group, config, THREE) {
   const drawerMaterial = new THREE.MeshLambertMaterial({ color: 0x5D4037 });
   const handleMaterial = new THREE.MeshLambertMaterial({ color: 0xBDBDBD });
 
-  const drawerCount = 4;
+  const drawerCount = config.drawerCount || 4;
   const drawerHeight = (config.height - 0.05) / drawerCount;
 
   for (let i = 0; i < drawerCount; i++) {
