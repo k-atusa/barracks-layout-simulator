@@ -49,8 +49,8 @@ export const FURNITURE_TYPES = {
   'dresser-5': {
     name: '5-Drawer Dresser',
     nameEn: '5-Drawer Dresser',
-    width: 0.8,
-    depth: 0.45,
+    width: 0.76,
+    depth: 0.6,
     height: 1.2,
     color: 0x6D4C41,
     icon: '🗄️',
@@ -59,8 +59,8 @@ export const FURNITURE_TYPES = {
   'bed-drawer-2': {
     name: '2-Drawer Bedside Chest',
     nameEn: '2-Drawer Bedside Chest',
-    width: 0.9,
-    depth: 0.45,
+    width: 0.5,
+    depth: 0.5,
     height: 0.5,
     color: 0x5D4037,
     icon: '🗄️',
