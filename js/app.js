@@ -434,7 +434,7 @@ class BarracksSimulator {
   onWheel(e) {
     if (this.viewMode === '2d') {
       e.preventDefault();
-      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      const delta = e.deltaY > 0 ? 0.96 : 1.04;
       this.targetScale = Math.max(50, Math.min(200, this.targetScale * delta));
       this.startZoomAnimation();
     } else if (this.viewMode === '3d') {
@@ -448,7 +448,7 @@ class BarracksSimulator {
 
     const currentDistance = this.camera.position.distanceTo(this.controls.target);
     const baseDistance = this.zoom3DTargetDistance ?? currentDistance;
-    const factor = deltaY > 0 ? 1.1 : 0.9;
+    const factor = deltaY > 0 ? 1.05 : 0.95;
 
     const min = this.controls.minDistance ?? 0.1;
     const max = this.controls.maxDistance ?? 1000;
