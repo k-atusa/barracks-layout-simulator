@@ -92,7 +92,7 @@ export class Room {
     this.group.add(dressFloor);
 
     // Grid — main room area only
-    const tileSize = 0.05;
+    const tileSize = 0.1;
     const linesMat = new THREE.LineBasicMaterial({ color: 0x6B6B5A, transparent: true, opacity: 0.3 });
     const gridGroup = new THREE.Group();
     gridGroup.name = 'grid';
@@ -390,7 +390,7 @@ export class Room {
 }
 
 // 2D room drawing matching the Humphreys floor plan
-export function draw2DRoom(ctx, width, depth, scale, offsetX, offsetY) {
+export function draw2DRoom(ctx, width, depth, scale, offsetX, offsetY, highlightLines = null) {
   const W = width * scale;
   const D = depth * scale;
   const partitionDepth = 1.5 * scale;
@@ -418,7 +418,7 @@ export function draw2DRoom(ctx, width, depth, scale, offsetX, offsetY) {
   // --- Grid (main room + bottom-left area) ---
   ctx.strokeStyle = '#6B6B5A';
   ctx.lineWidth = 0.5;
-  const gridSize = 0.05 * scale;
+  const gridSize = 0.1 * scale;
 
   for (let x = -W / 2; x <= W / 2; x += gridSize) {
     ctx.beginPath();
@@ -445,6 +445,62 @@ export function draw2DRoom(ctx, width, depth, scale, offsetX, offsetY) {
     ctx.moveTo(-W / 2, y);
     ctx.lineTo(partX, y);
     ctx.stroke();
+  }
+
+  // --- Highlight grid lines when corners touch ---
+  if (highlightLines && (highlightLines.xLines?.size || highlightLines.zLines?.size)) {
+    const gL = -W / 2;
+    const gR = W / 2;
+    const gT = -D / 2;
+    const gB = -D / 2 + mainD;
+    const xLines = highlightLines.xLines || new Set();
+    const zLines = highlightLines.zLines || new Set();
+
+    ctx.save();
+    ctx.strokeStyle = '#f1c40f';
+    ctx.lineWidth = 1.5;
+
+    xLines.forEach((i) => {
+      const x = gL + i * gridSize;
+      if (x < gL - 1 || x > gR + 1) return;
+
+      // Main room segment
+      ctx.beginPath();
+      ctx.moveTo(x, gT);
+      ctx.lineTo(x, gB);
+      ctx.stroke();
+
+      // Bottom-left segment only
+      if (x <= partX + 0.5) {
+        ctx.beginPath();
+        ctx.moveTo(x, gB);
+        ctx.lineTo(x, D / 2);
+        ctx.stroke();
+      }
+    });
+
+    zLines.forEach((i) => {
+      const z = gT + i * gridSize;
+      if (z < gT - 1 || z > D / 2 + 1) return;
+
+      // Main room rows
+      if (z <= gB + 0.5) {
+        ctx.beginPath();
+        ctx.moveTo(gL, z);
+        ctx.lineTo(gR, z);
+        ctx.stroke();
+      }
+
+      // Bottom-left rows only
+      if (z >= gB - 0.5) {
+        ctx.beginPath();
+        ctx.moveTo(gL, z);
+        ctx.lineTo(partX, z);
+        ctx.stroke();
+      }
+    });
+
+    ctx.restore();
   }
 
   // --- Outer walls (L-shaped perimeter, no line across left-bottom boundary) ---

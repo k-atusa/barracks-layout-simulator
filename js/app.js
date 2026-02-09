@@ -261,6 +261,7 @@ class BarracksSimulator {
     document.getElementById('rotation').addEventListener('change', (e) => {
       if (this.selectedFurniture) {
         this.selectedFurniture.rotation.y = parseFloat(e.target.value) * Math.PI / 180;
+        this._snapFurnitureToGrid(this.selectedFurniture);
         this.render();
       }
     });
@@ -388,13 +389,26 @@ class BarracksSimulator {
     let newX = this.dragFurnitureStart.x + dx;
     let newZ = this.dragFurnitureStart.z + dy;
 
-    // Snap to grid (aligned to room origin)
+    // Snap to grid (aligned to room origin, edge-aware)
     if (this.snapToGrid) {
-      const gridSize = 0.05;
+      const gridSize = 0.1;
       const originX = -this.roomWidth / 2;
       const originZ = -this.roomDepth / 2;
-      newX = originX + Math.round((newX - originX) / gridSize) * gridSize;
-      newZ = originZ + Math.round((newZ - originZ) / gridSize) * gridSize;
+      const config = this.selectedFurniture.userData;
+      const rot = this.selectedFurniture.rotation.y;
+      const isRotated = Math.abs(Math.sin(rot)) > 0.5;
+      const effW = isRotated ? config.depth : config.width;
+      const effD = isRotated ? config.width : config.depth;
+      // If half-dimension is not on grid, offset by half grid so edges align
+      const halfW = effW / 2;
+      const halfD = effD / 2;
+      const remX = halfW % gridSize;
+      const remZ = halfD % gridSize;
+      const eps = 0.001;
+      const offsetX = (remX > eps && Math.abs(remX - gridSize) > eps) ? gridSize / 2 : 0;
+      const offsetZ = (remZ > eps && Math.abs(remZ - gridSize) > eps) ? gridSize / 2 : 0;
+      newX = originX + offsetX + Math.round((newX - originX - offsetX) / gridSize) * gridSize;
+      newZ = originZ + offsetZ + Math.round((newZ - originZ - offsetZ) / gridSize) * gridSize;
     }
 
     // Update furniture position
@@ -517,19 +531,19 @@ class BarracksSimulator {
         this.deleteSelected();
         break;
       case 'ArrowUp':
-        this.selectedFurniture.position.z -= 0.05;
+        this.selectedFurniture.position.z -= 0.01;
         this._snapFurnitureToGrid(this.selectedFurniture);
         break;
       case 'ArrowDown':
-        this.selectedFurniture.position.z += 0.05;
+        this.selectedFurniture.position.z += 0.01;
         this._snapFurnitureToGrid(this.selectedFurniture);
         break;
       case 'ArrowLeft':
-        this.selectedFurniture.position.x -= 0.05;
+        this.selectedFurniture.position.x -= 0.01;
         this._snapFurnitureToGrid(this.selectedFurniture);
         break;
       case 'ArrowRight':
-        this.selectedFurniture.position.x += 0.05;
+        this.selectedFurniture.position.x += 0.01;
         this._snapFurnitureToGrid(this.selectedFurniture);
         break;
     }
@@ -569,17 +583,24 @@ class BarracksSimulator {
     let worldX = (canvasX - this.panOffset.x) / this.scale;
     let worldZ = (canvasY - this.panOffset.y) / this.scale;
 
-    // Snap to grid if enabled (aligned to room origin)
-    if (this.snapToGrid) {
-      const gridSize = 0.05;
-      const originX = -this.roomWidth / 2;
-      const originZ = -this.roomDepth / 2;
-      worldX = originX + Math.round((worldX - originX) / gridSize) * gridSize;
-      worldZ = originZ + Math.round((worldZ - originZ) / gridSize) * gridSize;
-    }
-
     // Clamp to usable area (main room + bottom-left)
     const config = FURNITURE_TYPES[type];
+
+    // Snap to grid if enabled (aligned to room origin, edge-aware)
+    if (this.snapToGrid) {
+      const gridSize = 0.1;
+      const originX = -this.roomWidth / 2;
+      const originZ = -this.roomDepth / 2;
+      const halfW = config.width / 2;
+      const halfD = config.depth / 2;
+      const remX = halfW % gridSize;
+      const remZ = halfD % gridSize;
+      const eps = 0.001;
+      const offsetX = (remX > eps && Math.abs(remX - gridSize) > eps) ? gridSize / 2 : 0;
+      const offsetZ = (remZ > eps && Math.abs(remZ - gridSize) > eps) ? gridSize / 2 : 0;
+      worldX = originX + offsetX + Math.round((worldX - originX - offsetX) / gridSize) * gridSize;
+      worldZ = originZ + offsetZ + Math.round((worldZ - originZ - offsetZ) / gridSize) * gridSize;
+    }
     if (typeof this.room3D.constrainToUsableArea === 'function') {
       const constrained = this.room3D.constrainToUsableArea(worldX, worldZ, config);
       worldX = constrained.x;
@@ -692,6 +713,8 @@ class BarracksSimulator {
   rotateSelected(degrees) {
     if (!this.selectedFurniture) return;
     this.selectedFurniture.rotation.y += degrees * Math.PI / 180;
+    // Re-snap after rotation since effective dimensions may change
+    this._snapFurnitureToGrid(this.selectedFurniture);
     this.updatePropertiesPanel();
     this.render();
   }
@@ -911,11 +934,24 @@ class BarracksSimulator {
 
   _snapFurnitureToGrid(furniture) {
     if (!this.snapToGrid) return;
-    const gridSize = 0.05;
+    const gridSize = 0.1;
     const originX = -this.roomWidth / 2;
     const originZ = -this.roomDepth / 2;
-    furniture.position.x = originX + Math.round((furniture.position.x - originX) / gridSize) * gridSize;
-    furniture.position.z = originZ + Math.round((furniture.position.z - originZ) / gridSize) * gridSize;
+    const config = furniture.userData;
+    const rot = furniture.rotation.y;
+    const isRotated = Math.abs(Math.sin(rot)) > 0.5;
+    const effW = isRotated ? config.depth : config.width;
+    const effD = isRotated ? config.width : config.depth;
+    const halfW = effW / 2;
+    const halfD = effD / 2;
+    // Offset by half grid when half-dimension doesn't land on grid
+    const remX = halfW % gridSize;
+    const remZ = halfD % gridSize;
+    const eps = 0.001;
+    const offsetX = (remX > eps && Math.abs(remX - gridSize) > eps) ? gridSize / 2 : 0;
+    const offsetZ = (remZ > eps && Math.abs(remZ - gridSize) > eps) ? gridSize / 2 : 0;
+    furniture.position.x = originX + offsetX + Math.round((furniture.position.x - originX - offsetX) / gridSize) * gridSize;
+    furniture.position.z = originZ + offsetZ + Math.round((furniture.position.z - originZ - offsetZ) / gridSize) * gridSize;
   }
 
   render() {
@@ -932,8 +968,66 @@ class BarracksSimulator {
     ctx.fillStyle = '#0f0f1a';
     ctx.fillRect(0, 0, this.canvas2D.width, this.canvas2D.height);
 
-    // Draw room
-    draw2DRoom(ctx, this.roomWidth, this.roomDepth, this.scale, this.panOffset.x, this.panOffset.y);
+    // Draw room (with optional grid highlights)
+    let highlightLines = null;
+    if (this.selectedFurniture) {
+      const gridSize = 0.1;
+      const originX = -this.roomWidth / 2;
+      const originZ = -this.roomDepth / 2;
+      const config = this.selectedFurniture.userData.config;
+      const pos = this.selectedFurniture.position;
+      const rot = this.selectedFurniture.rotation.y;
+      const cos = Math.cos(rot);
+      const sin = Math.sin(rot);
+      const halfW = config.width / 2;
+      const halfD = config.depth / 2;
+      const corners = [
+        { x: -halfW, z: -halfD },
+        { x: halfW, z: -halfD },
+        { x: halfW, z: halfD },
+        { x: -halfW, z: halfD }
+      ];
+
+      const xLines = new Set();
+      const zLines = new Set();
+      const eps = 0.002;
+
+      corners.forEach((c) => {
+        const worldX = pos.x + c.x * cos - c.z * sin;
+        const worldZ = pos.z + c.x * sin + c.z * cos;
+
+        const relX = worldX - originX;
+        const relZ = worldZ - originZ;
+
+        let remX = relX % gridSize;
+        let remZ = relZ % gridSize;
+        if (remX < 0) remX += gridSize;
+        if (remZ < 0) remZ += gridSize;
+
+        if (remX < eps || gridSize - remX < eps) {
+          const idxX = Math.round(relX / gridSize);
+          xLines.add(idxX);
+        }
+        if (remZ < eps || gridSize - remZ < eps) {
+          const idxZ = Math.round(relZ / gridSize);
+          zLines.add(idxZ);
+        }
+      });
+
+      if (xLines.size || zLines.size) {
+        highlightLines = { xLines, zLines };
+      }
+    }
+
+    draw2DRoom(
+      ctx,
+      this.roomWidth,
+      this.roomDepth,
+      this.scale,
+      this.panOffset.x,
+      this.panOffset.y,
+      highlightLines
+    );
 
     // Draw furniture
     this.furniture.forEach((furniture, index) => {

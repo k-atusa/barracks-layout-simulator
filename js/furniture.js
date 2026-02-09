@@ -21,7 +21,7 @@ export const FURNITURE_TYPES = {
   'desk': {
     name: 'Desk',
     nameEn: 'Desk',
-    width: 1.2,
+    width: 1.06,
     depth: 0.6,
     height: 0.75,
     color: 0x795548,
