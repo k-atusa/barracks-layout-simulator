@@ -23,6 +23,10 @@ class BarracksSimulator {
     this.zoomLerp = 0.2;
     this.panOffset = { x: 0, y: 0 };
 
+    // 3D zoom smoothing
+    this.zoom3DTargetDistance = null;
+    this.zoom3DLerp = 0.2;
+
     // Furniture management
     this.furniture = [];
     this.selectedFurniture = null;
@@ -105,6 +109,7 @@ class BarracksSimulator {
     this.controls = new THREE.OrbitControls(this.camera, this.canvas3D);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
+    this.controls.enableZoom = false;
     this.controls.maxPolarAngle = Math.PI / 2 - 0.1;
     this.controls.minDistance = 2;
     this.controls.maxDistance = 20;
@@ -432,7 +437,24 @@ class BarracksSimulator {
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
       this.targetScale = Math.max(50, Math.min(200, this.targetScale * delta));
       this.startZoomAnimation();
+    } else if (this.viewMode === '3d') {
+      e.preventDefault();
+      this.start3DZoom(e.deltaY);
     }
+  }
+
+  start3DZoom(deltaY) {
+    if (!this.controls) return;
+
+    const currentDistance = this.camera.position.distanceTo(this.controls.target);
+    const baseDistance = this.zoom3DTargetDistance ?? currentDistance;
+    const factor = deltaY > 0 ? 1.1 : 0.9;
+
+    const min = this.controls.minDistance ?? 0.1;
+    const max = this.controls.maxDistance ?? 1000;
+    const target = Math.max(min, Math.min(max, baseDistance * factor));
+
+    this.zoom3DTargetDistance = target;
   }
 
   startZoomAnimation() {
@@ -946,6 +968,21 @@ class BarracksSimulator {
     if (this.viewMode !== '3d') return;
 
     requestAnimationFrame(() => this.animate3D());
+
+    if (this.zoom3DTargetDistance !== null) {
+      const currentDistance = this.camera.position.distanceTo(this.controls.target);
+      const diff = this.zoom3DTargetDistance - currentDistance;
+
+      if (Math.abs(diff) < 0.01) {
+        const dir = new THREE.Vector3().subVectors(this.camera.position, this.controls.target).normalize();
+        this.camera.position.copy(this.controls.target.clone().addScaledVector(dir, this.zoom3DTargetDistance));
+        this.zoom3DTargetDistance = null;
+      } else {
+        const newDistance = currentDistance + diff * this.zoom3DLerp;
+        const dir = new THREE.Vector3().subVectors(this.camera.position, this.controls.target).normalize();
+        this.camera.position.copy(this.controls.target.clone().addScaledVector(dir, newDistance));
+      }
+    }
 
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
