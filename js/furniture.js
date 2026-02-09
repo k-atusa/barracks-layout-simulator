@@ -24,7 +24,7 @@ export const FURNITURE_TYPES = {
     width: 1.06,
     depth: 0.6,
     height: 0.78,
-    color: 0x795548,
+    color: 0x1f1f1f,
     icon: '🪑'
   },
   'chair': {
@@ -52,7 +52,7 @@ export const FURNITURE_TYPES = {
     width: 0.76,
     depth: 0.6,
     height: 1.1,
-    color: 0x6D4C41,
+    color: 0x1f1f1f,
     icon: '🗄️',
     drawerCount: 5
   },
@@ -62,7 +62,7 @@ export const FURNITURE_TYPES = {
     width: 0.5,
     depth: 0.5,
     height: 0.62,
-    color: 0x5D4037,
+    color: 0x1f1f1f,
     icon: '🗄️',
     drawerCount: 2
   },
@@ -266,28 +266,72 @@ function addBedDetails(group, config, THREE) {
 }
 
 function addDeskDetails(group, config, THREE) {
-  // Desk legs
-  const legGeometry = new THREE.BoxGeometry(0.05, config.height - 0.05, 0.05);
-  const legMaterial = new THREE.MeshLambertMaterial({ color: 0x4E342E });
+  const metalMaterial = new THREE.MeshLambertMaterial({ color: 0x1f1f1f });
+  const woodMaterial = new THREE.MeshLambertMaterial({ color: 0xD7C3A1 });
 
-  const positions = [
-    [-config.width / 2 + 0.05, (config.height - 0.05) / 2, -config.depth / 2 + 0.05],
-    [config.width / 2 - 0.05, (config.height - 0.05) / 2, -config.depth / 2 + 0.05],
-    [-config.width / 2 + 0.05, (config.height - 0.05) / 2, config.depth / 2 - 0.05],
-    [config.width / 2 - 0.05, (config.height - 0.05) / 2, config.depth / 2 - 0.05]
-  ];
+  // Metal body: right pedestal + panels (left space open for legs)
+  const pedestalWidth = config.width * 0.35;
+  const pedestalX = config.width / 2 - pedestalWidth / 2;
 
-  // Remove default box, add table top and legs
   group.children[0].geometry.dispose();
-  group.children[0].geometry = new THREE.BoxGeometry(config.width, 0.05, config.depth);
-  group.children[0].position.y = config.height - 0.025;
+  group.children[0].geometry = new THREE.BoxGeometry(pedestalWidth, config.height, config.depth);
+  group.children[0].position.set(pedestalX, config.height / 2, 0);
+  group.children[0].material = metalMaterial;
 
-  positions.forEach(pos => {
-    const leg = new THREE.Mesh(legGeometry, legMaterial);
-    leg.position.set(...pos);
-    leg.castShadow = true;
-    group.add(leg);
-  });
+  // Left side panel
+  const sideThickness = 0.04;
+  const leftPanel = new THREE.Mesh(
+    new THREE.BoxGeometry(sideThickness, config.height, config.depth),
+    metalMaterial
+  );
+  leftPanel.position.set(-config.width / 2 + sideThickness / 2, config.height / 2, 0);
+  leftPanel.castShadow = true;
+  group.add(leftPanel);
+
+  // Back panel (thin)
+  const backThickness = 0.03;
+  const backPanel = new THREE.Mesh(
+    new THREE.BoxGeometry(config.width, config.height * 0.9, backThickness),
+    metalMaterial
+  );
+  backPanel.position.set(0, (config.height * 0.9) / 2, -config.depth / 2 + backThickness / 2);
+  backPanel.castShadow = true;
+  group.add(backPanel);
+
+  // Wood top
+  const topThickness = 0.03;
+  const top = new THREE.Mesh(
+    new THREE.BoxGeometry(config.width + 0.01, topThickness, config.depth + 0.01),
+    woodMaterial
+  );
+  top.position.y = config.height + topThickness / 2;
+  top.castShadow = true;
+  group.add(top);
+
+  // Right-side 3-drawer stack (fronts)
+  const drawerStackWidth = pedestalWidth;
+  const drawerStackX = pedestalX;
+  const drawerFrontThickness = 0.02;
+  const drawerGap = 0.02;
+  const drawerAreaHeight = config.height - 0.06;
+  const drawerHeight = (drawerAreaHeight - drawerGap * 2) / 3;
+
+  for (let i = 0; i < 3; i++) {
+    const drawer = new THREE.Mesh(
+      new THREE.BoxGeometry(drawerStackWidth - 0.02, drawerHeight - 0.02, drawerFrontThickness),
+      metalMaterial
+    );
+    const y = 0.04 + drawerHeight / 2 + i * (drawerHeight + drawerGap);
+    drawer.position.set(drawerStackX, y, config.depth / 2 + drawerFrontThickness / 2 + 0.005);
+    group.add(drawer);
+
+    const handle = new THREE.Mesh(
+      new THREE.BoxGeometry(drawerStackWidth * 0.4, 0.015, 0.02),
+      new THREE.MeshLambertMaterial({ color: 0xBDBDBD })
+    );
+    handle.position.set(drawerStackX, y, config.depth / 2 + drawerFrontThickness + 0.02);
+    group.add(handle);
+  }
 }
 
 function addChairDetails(group, config, THREE) {
@@ -349,8 +393,23 @@ function addLockerDetails(group, config, THREE) {
 }
 
 function addDresserDetails(group, config, THREE) {
-  const drawerMaterial = new THREE.MeshLambertMaterial({ color: 0x5D4037 });
+  const isMetalStyle = group.userData?.type === 'dresser-5' || group.userData?.type === 'bed-drawer-2';
+  const drawerMaterial = new THREE.MeshLambertMaterial({ color: isMetalStyle ? 0x1f1f1f : 0x5D4037 });
   const handleMaterial = new THREE.MeshLambertMaterial({ color: 0xBDBDBD });
+
+  // Metal body + light wood top for 2-drawer and 5-drawer
+  if (isMetalStyle && group.children[0]) {
+    group.children[0].material.color.setHex(0x1f1f1f);
+    const topThickness = 0.03;
+    const topMaterial = new THREE.MeshLambertMaterial({ color: 0xD7C3A1 });
+    const top = new THREE.Mesh(
+      new THREE.BoxGeometry(config.width + 0.01, topThickness, config.depth + 0.01),
+      topMaterial
+    );
+    top.position.set(0, config.height + topThickness / 2, 0);
+    top.castShadow = true;
+    group.add(top);
+  }
 
   const drawerCount = config.drawerCount || 4;
   const drawerHeight = (config.height - 0.05) / drawerCount;
