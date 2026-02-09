@@ -61,11 +61,11 @@ export class Room {
     mainFloor.name = 'floor';
     this.group.add(mainFloor);
 
-    // Bathroom floor (bottom-left)
+    // Bottom-left floor (same as main room)
     const bathWidth = this.partitionX - (-this.width / 2);
     const bathFloor = new THREE.Mesh(
       new THREE.PlaneGeometry(bathWidth, this.partitionDepth),
-      new THREE.MeshLambertMaterial({ color: 0x9E9E8A, side: THREE.DoubleSide })
+      new THREE.MeshLambertMaterial({ color: 0x8B8B7A, side: THREE.DoubleSide })
     );
     bathFloor.rotation.x = -Math.PI / 2;
     bathFloor.position.set(
@@ -92,7 +92,7 @@ export class Room {
     this.group.add(dressFloor);
 
     // Grid — main room area only
-    const tileSize = 0.5;
+    const tileSize = 0.05;
     const linesMat = new THREE.LineBasicMaterial({ color: 0x6B6B5A, transparent: true, opacity: 0.3 });
     const gridGroup = new THREE.Group();
     gridGroup.name = 'grid';
@@ -215,39 +215,22 @@ export class Room {
     const aboveDoor = this.height - doorH;
 
     // ===== HORIZONTAL PARTITION (from partitionX to right wall, at partZ) =====
-    // with dressing room door opening near partitionX
-    const dressDoorX = this.partitionX + 0.05 + this.dressDoorWidth / 2;
-
-    // Left of dressing door
-    const hSegL = dressDoorX - this.dressDoorWidth / 2 - this.partitionX;
-    if (hSegL > 0.01) {
-      const w = this._box(hSegL, this.height, t, wm);
-      w.position.set(this.partitionX + hSegL / 2, this.height / 2, partZ);
-      this.group.add(w); this.walls.push(w); this.interiorWalls.push(w);
-    }
-
-    // Right of dressing door to right wall
-    const hSegR = this.width / 2 - (dressDoorX + this.dressDoorWidth / 2);
-    if (hSegR > 0) {
-      const w = this._box(hSegR, this.height, t, wm);
-      w.position.set(this.width / 2 - hSegR / 2, this.height / 2, partZ);
-      this.group.add(w); this.walls.push(w); this.interiorWalls.push(w);
-    }
-
-    // Above dressing door
-    if (aboveDoor > 0) {
-      const w = this._box(this.dressDoorWidth, aboveDoor, t, wm);
-      w.position.set(dressDoorX, doorH + aboveDoor / 2, partZ);
+    // solid wall (no top door opening)
+    const hSeg = this.width / 2 - this.partitionX;
+    if (hSeg > 0) {
+      const w = this._box(hSeg, this.height, t, wm);
+      w.position.set(this.partitionX + hSeg / 2, this.height / 2, partZ);
       this.group.add(w); this.walls.push(w); this.interiorWalls.push(w);
     }
 
     // ===== VERTICAL PARTITION (from partZ down to front wall, at partitionX) =====
-    // with bathroom door opening
-    const bathDoorStart = partZ + 0.215; // 215mm below partition line
-    const bathDoorEnd = bathDoorStart + this.bathDoorWidth;
+    // with dressing room door opening on the left side
+    const sideDoorWidth = this.dressDoorWidth;
+    const sideDoorStart = partZ + 0.215; // 215mm below partition line
+    const sideDoorEnd = sideDoorStart + sideDoorWidth;
 
     // Above bathroom door (partZ to door start)
-    const vSegTop = bathDoorStart - partZ;
+    const vSegTop = sideDoorStart - partZ;
     if (vSegTop > 0.01) {
       const w = this._box(t, this.height, vSegTop, wm);
       w.position.set(this.partitionX, this.height / 2, partZ + vSegTop / 2);
@@ -255,17 +238,17 @@ export class Room {
     }
 
     // Below bathroom door (door end to front wall)
-    const vSegBot = (this.depth / 2) - bathDoorEnd;
+    const vSegBot = (this.depth / 2) - sideDoorEnd;
     if (vSegBot > 0) {
       const w = this._box(t, this.height, vSegBot, wm);
-      w.position.set(this.partitionX, this.height / 2, bathDoorEnd + vSegBot / 2);
+      w.position.set(this.partitionX, this.height / 2, sideDoorEnd + vSegBot / 2);
       this.group.add(w); this.walls.push(w); this.interiorWalls.push(w);
     }
 
-    // Above bathroom door opening
+    // Above door opening
     if (aboveDoor > 0) {
-      const w = this._box(t, aboveDoor, this.bathDoorWidth, wm);
-      w.position.set(this.partitionX, doorH + aboveDoor / 2, bathDoorStart + this.bathDoorWidth / 2);
+      const w = this._box(t, aboveDoor, sideDoorWidth, wm);
+      w.position.set(this.partitionX, doorH + aboveDoor / 2, sideDoorStart + sideDoorWidth / 2);
       this.group.add(w); this.walls.push(w); this.interiorWalls.push(w);
     }
   }
@@ -372,6 +355,38 @@ export class Room {
       maxZ: -this.depth / 2 + this.mainRoomDepth
     };
   }
+
+  constrainToUsableArea(x, z, config) {
+    const halfW = config.width / 2;
+    const halfD = config.depth / 2;
+
+    const bounds = {
+      minX: -this.width / 2,
+      maxX: this.width / 2,
+      minZ: -this.depth / 2,
+      maxZ: this.depth / 2
+    };
+
+    let clampedX = Math.max(bounds.minX + halfW, Math.min(bounds.maxX - halfW, x));
+    let clampedZ = Math.max(bounds.minZ + halfD, Math.min(bounds.maxZ - halfD, z));
+
+    // Exclude dressing room (bottom-right). Keep main room + bottom-left.
+    const partZ = this.depth / 2 - this.partitionDepth;
+    const maxLeftX = this.partitionX - halfW;
+    const maxTopZ = partZ - halfD;
+
+    if (clampedX > maxLeftX && clampedZ > maxTopZ) {
+      const dx = clampedX - maxLeftX;
+      const dz = clampedZ - maxTopZ;
+      if (dx < dz) {
+        clampedX = maxLeftX;
+      } else {
+        clampedZ = maxTopZ;
+      }
+    }
+
+    return { x: clampedX, z: clampedZ };
+  }
 }
 
 // 2D room drawing matching the Humphreys floor plan
@@ -390,9 +405,9 @@ export function draw2DRoom(ctx, width, depth, scale, offsetX, offsetY) {
   ctx.fillStyle = '#8B8B7A';
   ctx.fillRect(-W / 2, -D / 2, W, mainD);
 
-  // Bathroom floor (bottom-left)
+  // Bottom-left floor (same as main room)
   const bathW = partX - (-W / 2);
-  ctx.fillStyle = '#9E9E8A';
+  ctx.fillStyle = '#8B8B7A';
   ctx.fillRect(-W / 2, -D / 2 + mainD, bathW, partitionDepth);
 
   // Dressing room floor (bottom-right)
@@ -400,10 +415,10 @@ export function draw2DRoom(ctx, width, depth, scale, offsetX, offsetY) {
   ctx.fillStyle = '#7A7A6A';
   ctx.fillRect(partX, -D / 2 + mainD, dressRoomW, partitionDepth);
 
-  // --- Grid (main room only) ---
+  // --- Grid (main room + bottom-left area) ---
   ctx.strokeStyle = '#6B6B5A';
   ctx.lineWidth = 0.5;
-  const gridSize = 0.5 * scale;
+  const gridSize = 0.05 * scale;
 
   for (let x = -W / 2; x <= W / 2; x += gridSize) {
     ctx.beginPath();
@@ -418,52 +433,60 @@ export function draw2DRoom(ctx, width, depth, scale, offsetX, offsetY) {
     ctx.stroke();
   }
 
-  // --- Outer walls ---
+  // Bottom-left area grid (same as main room)
+  for (let x = -W / 2; x <= partX; x += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(x, -D / 2 + mainD);
+    ctx.lineTo(x, D / 2);
+    ctx.stroke();
+  }
+  for (let y = -D / 2 + mainD; y <= D / 2; y += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(-W / 2, y);
+    ctx.lineTo(partX, y);
+    ctx.stroke();
+  }
+
+  // --- Outer walls (L-shaped perimeter, no line across left-bottom boundary) ---
   ctx.strokeStyle = '#333';
   ctx.lineWidth = 8;
   const wo = ctx.lineWidth / 2;
 
-  // Full outer rectangle
+  const partLineZ = -D / 2 + mainD;
+
+  // Draw L-shaped outer perimeter as a single path
   ctx.beginPath();
-  ctx.rect(-W / 2 - wo, -D / 2 - wo, W + wo * 2, D + wo * 2);
+  ctx.moveTo(-W / 2 - wo, -D / 2 - wo);       // top-left
+  ctx.lineTo(W / 2 + wo, -D / 2 - wo);         // top-right
+  ctx.lineTo(W / 2 + wo, D / 2 + wo);           // bottom-right
+  ctx.lineTo(-W / 2 - wo, D / 2 + wo);           // bottom-left
+  ctx.lineTo(-W / 2 - wo, -D / 2 - wo);         // back to top-left
   ctx.stroke();
 
   // --- Interior partition walls ---
   ctx.strokeStyle = '#555';
   ctx.lineWidth = 6;
 
-  const partLineZ = -D / 2 + mainD;
-
-  // Horizontal partition: from partX to right wall, with dressing room door
-  const dressDoorW = 0.8 * scale;
-  const dressDoorXpos = partX + 0.05 * scale + dressDoorW / 2;
-
-  // Left of dressing door
+  // Horizontal partition: from partX to right wall (solid wall, dressing room top)
   ctx.beginPath();
   ctx.moveTo(partX, partLineZ);
-  ctx.lineTo(dressDoorXpos - dressDoorW / 2, partLineZ);
-  ctx.stroke();
-
-  // Right of dressing door
-  ctx.beginPath();
-  ctx.moveTo(dressDoorXpos + dressDoorW / 2, partLineZ);
   ctx.lineTo(W / 2, partLineZ);
   ctx.stroke();
 
-  // Vertical partition: from partLine down to front wall, with bathroom door
-  const bathDoorW = 0.79 * scale;
-  const bathDoorTop = partLineZ + 0.215 * scale;
-  const bathDoorBottom = bathDoorTop + bathDoorW;
+  // Vertical partition: from partLine down to front wall, with dressing room door
+  const sideDoorW = 0.8 * scale;
+  const sideDoorTop = partLineZ + 0.215 * scale;
+  const sideDoorBottom = sideDoorTop + sideDoorW;
 
-  // Above bathroom door
+  // Above door
   ctx.beginPath();
   ctx.moveTo(partX, partLineZ);
-  ctx.lineTo(partX, bathDoorTop);
+  ctx.lineTo(partX, sideDoorTop);
   ctx.stroke();
 
-  // Below bathroom door
+  // Below door
   ctx.beginPath();
-  ctx.moveTo(partX, bathDoorBottom);
+  ctx.moveTo(partX, sideDoorBottom);
   ctx.lineTo(partX, D / 2);
   ctx.stroke();
 
@@ -473,52 +496,15 @@ export function draw2DRoom(ctx, width, depth, scale, offsetX, offsetY) {
   ctx.fillStyle = '#8B8B7A';
   ctx.fillRect(entryDoorXpos - entryDoorW / 2, D / 2 - 4, entryDoorW, 12);
 
-  // Door swing arc
-  ctx.strokeStyle = '#6D4C41';
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([5, 5]);
-  ctx.beginPath();
-  ctx.arc(entryDoorXpos + entryDoorW / 2, D / 2, entryDoorW, Math.PI, Math.PI * 1.5);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
   // --- Window (back wall, top) ---
   const winW = 1.17 * scale;
   const winXpos = (-width / 2 + 0.63 + 1.17 / 2) * scale;
   ctx.fillStyle = '#87CEEB';
   ctx.fillRect(winXpos - winW / 2, -D / 2 - 4, winW, 8);
 
-  // --- Bathroom door swing arc ---
-  ctx.strokeStyle = '#6D4C41';
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([5, 5]);
-  ctx.beginPath();
-  ctx.arc(partX, bathDoorTop, bathDoorW, 0, Math.PI / 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  // --- Dressing room door swing arc ---
-  ctx.beginPath();
-  ctx.arc(dressDoorXpos - dressDoorW / 2, partLineZ, dressDoorW, Math.PI / 2, 0, true);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  // --- Labels ---
-  ctx.fillStyle = 'rgba(255,255,255,0.7)';
-  ctx.font = '11px Arial';
-  ctx.textAlign = 'center';
-
-  // Main room
-  ctx.fillText('Main Room', 0, -D / 2 + mainD / 2);
-  ctx.fillText(width.toFixed(1) + 'm × ' + (depth - 1.5).toFixed(2) + 'm', 0, -D / 2 + mainD / 2 + 15);
-
-  // Dressing room
-  const dressCX = (partX + W / 2) / 2;
-  ctx.fillText('Dressing Room', dressCX, -D / 2 + mainD + partitionDepth / 2);
-
-  // Bathroom
-  const bathCX = (-W / 2 + partX) / 2;
-  ctx.fillText('Bathroom', bathCX, -D / 2 + mainD + partitionDepth / 2);
+  // --- Dressing room door (left side opening) ---
+  ctx.fillStyle = '#8B8B7A';
+  ctx.fillRect(partX - 4, sideDoorTop, 8, sideDoorW);
 
   // --- Dimension labels ---
   ctx.fillStyle = '#fff';

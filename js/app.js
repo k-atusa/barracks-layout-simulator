@@ -388,11 +388,13 @@ class BarracksSimulator {
     let newX = this.dragFurnitureStart.x + dx;
     let newZ = this.dragFurnitureStart.z + dy;
 
-    // Snap to grid
+    // Snap to grid (aligned to room origin)
     if (this.snapToGrid) {
-      const gridSize = 0.1;
-      newX = Math.round(newX / gridSize) * gridSize;
-      newZ = Math.round(newZ / gridSize) * gridSize;
+      const gridSize = 0.05;
+      const originX = -this.roomWidth / 2;
+      const originZ = -this.roomDepth / 2;
+      newX = originX + Math.round((newX - originX) / gridSize) * gridSize;
+      newZ = originZ + Math.round((newZ - originZ) / gridSize) * gridSize;
     }
 
     // Update furniture position
@@ -410,18 +412,26 @@ class BarracksSimulator {
 
   onMouseUp(e) {
     if (this.isDragging && this.selectedFurniture) {
-      // Clamp to room bounds
-      const bounds = this.room3D.getFloorBounds();
       const config = this.selectedFurniture.userData.config;
-
-      this.selectedFurniture.position.x = Math.max(
-        bounds.minX + config.width / 2,
-        Math.min(bounds.maxX - config.width / 2, this.selectedFurniture.position.x)
-      );
-      this.selectedFurniture.position.z = Math.max(
-        bounds.minZ + config.depth / 2,
-        Math.min(bounds.maxZ - config.depth / 2, this.selectedFurniture.position.z)
-      );
+      if (typeof this.room3D.constrainToUsableArea === 'function') {
+        const constrained = this.room3D.constrainToUsableArea(
+          this.selectedFurniture.position.x,
+          this.selectedFurniture.position.z,
+          config
+        );
+        this.selectedFurniture.position.x = constrained.x;
+        this.selectedFurniture.position.z = constrained.z;
+      } else {
+        const bounds = this.room3D.getFloorBounds();
+        this.selectedFurniture.position.x = Math.max(
+          bounds.minX + config.width / 2,
+          Math.min(bounds.maxX - config.width / 2, this.selectedFurniture.position.x)
+        );
+        this.selectedFurniture.position.z = Math.max(
+          bounds.minZ + config.depth / 2,
+          Math.min(bounds.maxZ - config.depth / 2, this.selectedFurniture.position.z)
+        );
+      }
 
       this.updatePropertiesPanel();
     }
@@ -507,16 +517,20 @@ class BarracksSimulator {
         this.deleteSelected();
         break;
       case 'ArrowUp':
-        this.selectedFurniture.position.z -= 0.1;
+        this.selectedFurniture.position.z -= 0.05;
+        this._snapFurnitureToGrid(this.selectedFurniture);
         break;
       case 'ArrowDown':
-        this.selectedFurniture.position.z += 0.1;
+        this.selectedFurniture.position.z += 0.05;
+        this._snapFurnitureToGrid(this.selectedFurniture);
         break;
       case 'ArrowLeft':
-        this.selectedFurniture.position.x -= 0.1;
+        this.selectedFurniture.position.x -= 0.05;
+        this._snapFurnitureToGrid(this.selectedFurniture);
         break;
       case 'ArrowRight':
-        this.selectedFurniture.position.x += 0.1;
+        this.selectedFurniture.position.x += 0.05;
+        this._snapFurnitureToGrid(this.selectedFurniture);
         break;
     }
 
@@ -555,19 +569,26 @@ class BarracksSimulator {
     let worldX = (canvasX - this.panOffset.x) / this.scale;
     let worldZ = (canvasY - this.panOffset.y) / this.scale;
 
-    // Snap to grid if enabled
+    // Snap to grid if enabled (aligned to room origin)
     if (this.snapToGrid) {
-      const gridSize = 0.1;
-      worldX = Math.round(worldX / gridSize) * gridSize;
-      worldZ = Math.round(worldZ / gridSize) * gridSize;
+      const gridSize = 0.05;
+      const originX = -this.roomWidth / 2;
+      const originZ = -this.roomDepth / 2;
+      worldX = originX + Math.round((worldX - originX) / gridSize) * gridSize;
+      worldZ = originZ + Math.round((worldZ - originZ) / gridSize) * gridSize;
     }
 
-    // Clamp to room bounds
-    const bounds = this.room3D.getFloorBounds();
+    // Clamp to usable area (main room + bottom-left)
     const config = FURNITURE_TYPES[type];
-
-    worldX = Math.max(bounds.minX + config.width / 2, Math.min(bounds.maxX - config.width / 2, worldX));
-    worldZ = Math.max(bounds.minZ + config.depth / 2, Math.min(bounds.maxZ - config.depth / 2, worldZ));
+    if (typeof this.room3D.constrainToUsableArea === 'function') {
+      const constrained = this.room3D.constrainToUsableArea(worldX, worldZ, config);
+      worldX = constrained.x;
+      worldZ = constrained.z;
+    } else {
+      const bounds = this.room3D.getFloorBounds();
+      worldX = Math.max(bounds.minX + config.width / 2, Math.min(bounds.maxX - config.width / 2, worldX));
+      worldZ = Math.max(bounds.minZ + config.depth / 2, Math.min(bounds.maxZ - config.depth / 2, worldZ));
+    }
 
     this.addFurnitureAt(type, worldX, worldZ, 0, true);
 
@@ -869,6 +890,12 @@ class BarracksSimulator {
         pos.z = bounds.maxZ - config.depth / 2 - 0.1;
       }
 
+      if (typeof this.room3D.constrainToUsableArea === 'function') {
+        const constrained = this.room3D.constrainToUsableArea(pos.x, pos.z, config);
+        pos.x = constrained.x;
+        pos.z = constrained.z;
+      }
+
       // Snap rotation to 90 degrees
       const rotDeg = f.rotation.y * 180 / Math.PI;
       f.rotation.y = Math.round(rotDeg / 90) * 90 * Math.PI / 180;
@@ -880,6 +907,15 @@ class BarracksSimulator {
 
     this.updateInfo();
     this.render();
+  }
+
+  _snapFurnitureToGrid(furniture) {
+    if (!this.snapToGrid) return;
+    const gridSize = 0.05;
+    const originX = -this.roomWidth / 2;
+    const originZ = -this.roomDepth / 2;
+    furniture.position.x = originX + Math.round((furniture.position.x - originX) / gridSize) * gridSize;
+    furniture.position.z = originZ + Math.round((furniture.position.z - originZ) / gridSize) * gridSize;
   }
 
   render() {
