@@ -27,8 +27,11 @@ class BarracksSimulator {
 
     // Interaction state
     this.isDragging = false;
+    this.isPanning = false;
     this.dragStart = { x: 0, y: 0 };
     this.dragFurnitureStart = { x: 0, z: 0 };
+    this.panStart = { x: 0, y: 0 };
+    this.panOffsetStart = { x: 0, y: 0 };
 
     // Options
     this.showGrid = true;
@@ -323,6 +326,10 @@ class BarracksSimulator {
         };
       } else {
         this.deselectFurniture();
+        // Start panning when dragging empty space
+        this.isPanning = true;
+        this.panStart = { x, y };
+        this.panOffsetStart = { x: this.panOffset.x, y: this.panOffset.y };
       }
     } else {
       // 3D mode - raycasting
@@ -350,11 +357,22 @@ class BarracksSimulator {
   }
 
   onMouseMove(e) {
-    if (!this.isDragging || this.viewMode !== '2d') return;
+    if (this.viewMode !== '2d') return;
 
     const rect = this.canvas2D.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    if (this.isPanning) {
+      const dx = x - this.panStart.x;
+      const dy = y - this.panStart.y;
+      this.panOffset.x = this.panOffsetStart.x + dx;
+      this.panOffset.y = this.panOffsetStart.y + dy;
+      this.render();
+      return;
+    }
+
+    if (!this.isDragging) return;
 
     const dx = (x - this.dragStart.x) / this.scale;
     const dy = (y - this.dragStart.y) / this.scale;
@@ -401,6 +419,7 @@ class BarracksSimulator {
     }
 
     this.isDragging = false;
+    this.isPanning = false;
     this.render();
   }
 
