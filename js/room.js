@@ -45,6 +45,7 @@ export class Room {
     this.createInteriorWalls();
     this.createWindow();
     this.createEntryDoor();
+    this.updateWallAABBs();
   }
 
   createFloor() {
@@ -353,6 +354,15 @@ export class Room {
     this.walls.forEach(w => { w.visible = show; });
   }
 
+  updateWallAABBs() {
+    const THREE = this.THREE;
+    this.group.updateMatrixWorld(true);
+    this._wallAABBs = this.walls.map((w) => {
+      const box = new THREE.Box3().setFromObject(w);
+      return { min: box.min.clone(), max: box.max.clone() };
+    });
+  }
+
   resize(width, depth, height) {
     while (this.group.children.length > 0) {
       const child = this.group.children[0];
@@ -367,6 +377,58 @@ export class Room {
     this.interiorWalls = [];
     this.mainRoomDepth = this.depth - this.partitionDepth;
     this.create();
+  }
+
+  _collidesWithWalls(x, z, radius, eyeHeight = 1.6) {
+    const aabbs = this._wallAABBs || [];
+    const minY = 0;
+    const maxY = eyeHeight;
+
+    for (let i = 0; i < aabbs.length; i++) {
+      const { min, max } = aabbs[i];
+
+      if (maxY < min.y || minY > max.y) continue;
+
+      const minX = min.x - radius;
+      const maxX = max.x + radius;
+      const minZ = min.z - radius;
+      const maxZ = max.z + radius;
+
+      if (x >= minX && x <= maxX && z >= minZ && z <= maxZ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  constrainToWalkableArea(prevX, prevZ, nextX, nextZ, radius = 0.2, eyeHeight = 1.6) {
+    const bounds = {
+      minX: -this.width / 2 + radius,
+      maxX: this.width / 2 - radius,
+      minZ: -this.depth / 2 + radius,
+      maxZ: this.depth / 2 - radius
+    };
+
+    let targetX = Math.max(bounds.minX, Math.min(bounds.maxX, nextX));
+    let targetZ = Math.max(bounds.minZ, Math.min(bounds.maxZ, nextZ));
+
+    if (!this._wallAABBs) this.updateWallAABBs();
+
+    let curX = prevX;
+    let curZ = prevZ;
+
+    // X move
+    if (!this._collidesWithWalls(targetX, curZ, radius, eyeHeight)) {
+      curX = targetX;
+    }
+
+    // Z move
+    if (!this._collidesWithWalls(curX, targetZ, radius, eyeHeight)) {
+      curZ = targetZ;
+    }
+
+    return { x: curX, z: curZ };
   }
 
   getFloorBounds() {
@@ -393,18 +455,50 @@ export class Room {
     let clampedX = Math.max(bounds.minX + halfW, Math.min(bounds.maxX - halfW, x));
     let clampedZ = Math.max(bounds.minZ + halfD, Math.min(bounds.maxZ - halfD, z));
 
-    // Exclude dressing room (bottom-right). Keep main room + bottom-left.
-    const partZ = this.depth / 2 - this.partitionDepth;
-    const maxLeftX = this.partitionX - halfW;
-    const maxTopZ = partZ - halfD;
+    if (!config.allowDressingRoom) {
+      // Exclude dressing room (bottom-right). Keep main room + bottom-left.
+      const partZ = this.depth / 2 - this.partitionDepth;
+      const maxLeftX = this.partitionX - halfW;
+      const maxTopZ = partZ - halfD;
 
-    if (clampedX > maxLeftX && clampedZ > maxTopZ) {
-      const dx = clampedX - maxLeftX;
-      const dz = clampedZ - maxTopZ;
-      if (dx < dz) {
-        clampedX = maxLeftX;
-      } else {
-        clampedZ = maxTopZ;
+      if (clampedX > maxLeftX && clampedZ > maxTopZ) {
+        const dx = clampedX - maxLeftX;
+        const dz = clampedZ - maxTopZ;
+        if (dx < dz) {
+          clampedX = maxLeftX;
+        } else {
+          clampedZ = maxTopZ;
+        }
+      }
+    } else {
+      // Allow dressing room, but block crossing interior partition walls.
+      const partZ = this.depth / 2 - this.partitionDepth;
+
+      const prevX = typeof config.prevX === 'number' ? config.prevX : clampedX;
+      const prevZ = typeof config.prevZ === 'number' ? config.prevZ : clampedZ;
+
+      // Horizontal partition wall (solid) between main room and dressing room
+      if (clampedX > this.partitionX + halfW) {
+        if (prevZ <= partZ - halfD && clampedZ > partZ - halfD) {
+          clampedZ = partZ - halfD;
+        } else if (prevZ >= partZ + halfD && clampedZ < partZ + halfD) {
+          clampedZ = partZ + halfD;
+        }
+      }
+
+      // Vertical partition wall with door opening (between bathroom and dressing room)
+      const sideDoorStart = partZ + 0.215;
+      const sideDoorEnd = sideDoorStart + this.dressDoorWidth;
+      const doorMinZ = sideDoorStart + halfD;
+      const doorMaxZ = sideDoorEnd - halfD;
+      const inDoor = clampedZ >= doorMinZ && clampedZ <= doorMaxZ;
+
+      if (!inDoor) {
+        if (prevX <= this.partitionX - halfW && clampedX > this.partitionX - halfW) {
+          clampedX = this.partitionX - halfW;
+        } else if (prevX >= this.partitionX + halfW && clampedX < this.partitionX + halfW) {
+          clampedX = this.partitionX + halfW;
+        }
       }
     }
 

@@ -1434,9 +1434,17 @@ class BarracksSimulator {
 
     if (move.lengthSq() > 0) {
       move.normalize().multiplyScalar(this.view360.moveSpeed * dt);
-      const next = this.camera.position.clone().add(move);
-      if (typeof this.room3D?.constrainToUsableArea === 'function') {
-        const constrained = this.room3D.constrainToUsableArea(next.x, next.z, { width: 0.4, depth: 0.4 });
+      const prev = this.camera.position.clone();
+      const next = prev.clone().add(move);
+      if (typeof this.room3D?.constrainToWalkableArea === 'function') {
+        const constrained = this.room3D.constrainToWalkableArea(
+          prev.x,
+          prev.z,
+          next.x,
+          next.z,
+          0.2,
+          1.6
+        );
         this.camera.position.set(constrained.x, this.camera.position.y, constrained.z);
       } else {
         this.camera.position.copy(next);
