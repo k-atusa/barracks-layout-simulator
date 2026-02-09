@@ -69,7 +69,39 @@ class BarracksSimulator {
     this.setup3D();
     this.setupEventListeners();
     this.setupUI();
-    this.addDefaultLayout();
+    this.loadLayoutFromData({
+      room: {
+        width: 3.5,
+        depth: 5.05,
+        height: 2.6
+      },
+      furniture: [
+        {
+          type: 'single-bed',
+          x: 1.25,
+          z: -0.050000000000000044,
+          rotation: Math.PI
+        },
+        {
+          type: 'desk',
+          x: -0.5399999999999998,
+          z: -2.2249999999999996,
+          rotation: 0
+        },
+        {
+          type: 'dresser-5',
+          x: 1.4500000000000002,
+          z: -2.138778452450518,
+          rotation: -Math.PI / 2
+        },
+        {
+          type: 'bed-drawer-2',
+          x: 0.4610831414279115,
+          z: 0.7249999999999999,
+          rotation: Math.PI
+        }
+      ]
+    });
     this.render();
   }
 
@@ -889,6 +921,39 @@ class BarracksSimulator {
     };
     reader.readAsText(file);
     e.target.value = '';
+  }
+
+  loadLayoutFromData(layout) {
+    if (!layout || !layout.room || !layout.furniture) return;
+
+    // Clear existing furniture
+    this.furniture.forEach(f => this.scene.remove(f));
+    this.furniture = [];
+
+    // Update room
+    this.roomWidth = layout.room.width;
+    this.roomDepth = layout.room.depth;
+    this.roomHeight = layout.room.height;
+
+    document.getElementById('room-width').value = this.roomWidth;
+    document.getElementById('room-depth').value = this.roomDepth;
+    document.getElementById('room-height').value = this.roomHeight;
+
+    this.updateRoom();
+
+    // Add furniture
+    layout.furniture.forEach(f => {
+      const furniture = createFurnitureMesh(f.type, THREE);
+      furniture.position.set(f.x, 0, f.z);
+      furniture.rotation.y = f.rotation;
+
+      this.furniture.push(furniture);
+      this.scene.add(furniture);
+    });
+
+    this.collisionDetector.setFurniture(this.furniture);
+    this.deselectFurniture();
+    this.updateInfo();
   }
 
   autoArrange() {
