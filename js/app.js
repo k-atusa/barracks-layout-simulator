@@ -23,6 +23,10 @@ class BarracksSimulator {
       pitchStart: 0,
       moveSpeed: 1.2,
       lookSensitivity: 0.003,
+      fov: 60,
+      minFov: 25,
+      maxFov: 90,
+      fovSensitivity: 0.04,
       keys: { forward: false, back: false, left: false, right: false },
       lastTime: 0
     };
@@ -561,6 +565,13 @@ class BarracksSimulator {
       this.startZoomAnimation();
     } else if (this.viewMode === '360') {
       e.preventDefault();
+      const deltaFov = e.deltaY * this.view360.fovSensitivity;
+      const nextFov = Math.max(
+        this.view360.minFov,
+        Math.min(this.view360.maxFov, this.camera.fov + deltaFov)
+      );
+      this.camera.fov = nextFov;
+      this.camera.updateProjectionMatrix();
     } else if (this.viewMode === '3d') {
       e.preventDefault();
       this.start3DZoom(e.deltaY);
@@ -627,6 +638,8 @@ class BarracksSimulator {
     this.camera.position.set(startX, startY, startZ);
     this.view360.yaw = 0;
     this.view360.pitch = 0;
+    this.camera.fov = this.view360.fov;
+    this.camera.updateProjectionMatrix();
     this.camera.rotation.order = 'YXZ';
     this.camera.rotation.set(0, 0, 0, 'YXZ');
     this.view360.lastTime = performance.now();
