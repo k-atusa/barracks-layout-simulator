@@ -23,12 +23,13 @@ class BarracksSimulator {
       pitchStart: 0,
       moveSpeed: 1.2,
       lookSensitivity: 0.003,
-      fov: 60,
+      baseFov: 60,
       minFov: 25,
       maxFov: 90,
       fovSensitivity: 0.04,
       keys: { forward: false, back: false, left: false, right: false },
-      lastTime: 0
+      lastTime: 0,
+      fovAnim: null
     };
 
     // Room dimensions (meters) — USAG Humphreys barracks
@@ -402,6 +403,11 @@ class BarracksSimulator {
     const y = e.clientY - rect.top;
 
     if (this.viewMode === '360') {
+      if (e.button === 1) {
+        e.preventDefault();
+        this.animateFovTo(this.view360.baseFov);
+        return;
+      }
       if (document.pointerLockElement !== this.canvas3D) {
         this.canvas3D.requestPointerLock();
       }
@@ -638,7 +644,7 @@ class BarracksSimulator {
     this.camera.position.set(startX, startY, startZ);
     this.view360.yaw = 0;
     this.view360.pitch = 0;
-    this.camera.fov = this.view360.fov;
+    this.camera.fov = this.view360.baseFov;
     this.camera.updateProjectionMatrix();
     this.camera.rotation.order = 'YXZ';
     this.camera.rotation.set(0, 0, 0, 'YXZ');
@@ -655,6 +661,7 @@ class BarracksSimulator {
     this.view360.active = false;
     this.view360.isLooking = false;
     this.view360.keys = { forward: false, back: false, left: false, right: false };
+    this.view360.fovAnim = null;
 
     if (document.pointerLockElement === this.canvas3D) {
       document.exitPointerLock();
@@ -663,6 +670,38 @@ class BarracksSimulator {
 
   onPointerLockChange() {
     this.view360.isLooking = document.pointerLockElement === this.canvas3D;
+  }
+
+  animateFovTo(targetFov, duration = 220) {
+    if (this.viewMode !== '360') return;
+
+    const clamped = Math.max(this.view360.minFov, Math.min(this.view360.maxFov, targetFov));
+    const from = this.camera.fov;
+    const to = clamped;
+
+    if (Math.abs(from - to) < 0.01) return;
+
+    const start = performance.now();
+    this.view360.fovAnim = { start, from, to, duration };
+
+    const easeInOutQuad = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+
+    const step = (now) => {
+      if (this.viewMode !== '360' || !this.view360.fovAnim) return;
+      const elapsed = now - start;
+      const t = Math.min(1, elapsed / duration);
+      const eased = easeInOutQuad(t);
+      this.camera.fov = from + (to - from) * eased;
+      this.camera.updateProjectionMatrix();
+
+      if (t < 1) {
+        requestAnimationFrame(step);
+      } else {
+        this.view360.fovAnim = null;
+      }
+    };
+
+    requestAnimationFrame(step);
   }
 
   onKeyDown(e) {
