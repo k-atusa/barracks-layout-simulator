@@ -11,9 +11,9 @@ class BarracksSimulator {
     // View mode
     this.viewMode = '2d'; // '2d' or '3d'
 
-    // Room dimensions (meters)
-    this.roomWidth = 6;
-    this.roomDepth = 4;
+    // Room dimensions (meters) — USAG Humphreys barracks
+    this.roomWidth = 3.5;
+    this.roomDepth = 5.05;
     this.roomHeight = 2.8;
 
     // 2D view settings
@@ -531,28 +531,28 @@ class BarracksSimulator {
   addDefaultLayout() {
     const bounds = this.room3D.getFloorBounds();
 
-    // Single bed along the left wall
+    // Single bed along the back wall (window side), left area
     const bedConfig = FURNITURE_TYPES['single-bed'];
     const bedX = bounds.minX + bedConfig.width / 2 + 0.1;
-    const bedZ = bounds.minZ + bedConfig.depth / 2 + 0.6;
+    const bedZ = bounds.minZ + bedConfig.depth / 2 + 0.1;
     this.addFurnitureAt('single-bed', bedX, bedZ, 0, false);
 
-    // Desk along the back wall
+    // Desk along the right wall, near window
     const deskConfig = FURNITURE_TYPES['desk'];
-    const deskX = bounds.minX + deskConfig.width / 2 + 1.6;
+    const deskX = bounds.maxX - deskConfig.width / 2 - 0.1;
     const deskZ = bounds.minZ + deskConfig.depth / 2 + 0.2;
     this.addFurnitureAt('desk', deskX, deskZ, 0, false);
 
-    // 5-drawer dresser near the right wall
+    // 5-drawer dresser along the right wall, below desk
     const dresser5Config = FURNITURE_TYPES['dresser-5'];
-    const dresser5X = bounds.maxX - dresser5Config.width / 2 - 0.2;
-    const dresser5Z = bounds.minZ + dresser5Config.depth / 2 + 0.8;
+    const dresser5X = bounds.maxX - dresser5Config.width / 2 - 0.1;
+    const dresser5Z = deskZ + deskConfig.depth / 2 + dresser5Config.depth / 2 + 0.3;
     this.addFurnitureAt('dresser-5', dresser5X, dresser5Z, Math.PI, false);
 
-    // 2-drawer bedside chest at the foot of the bed
+    // 2-drawer bedside chest next to the bed
     const bedDrawerConfig = FURNITURE_TYPES['bed-drawer-2'];
-    const bedDrawerX = bedX;
-    const bedDrawerZ = bedZ + bedConfig.depth / 2 + bedDrawerConfig.depth / 2 + 0.2;
+    const bedDrawerX = bedX + bedConfig.width / 2 + bedDrawerConfig.width / 2 + 0.05;
+    const bedDrawerZ = bedZ - bedConfig.depth / 2 + bedDrawerConfig.depth / 2;
     this.addFurnitureAt('bed-drawer-2', bedDrawerX, bedDrawerZ, 0, false);
 
     this.updateInfo();
