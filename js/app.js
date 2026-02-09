@@ -18,6 +18,9 @@ class BarracksSimulator {
 
     // 2D view settings
     this.scale = 100; // pixels per meter
+    this.targetScale = this.scale;
+    this.zoomAnimating = false;
+    this.zoomLerp = 0.2;
     this.panOffset = { x: 0, y: 0 };
 
     // Furniture management
@@ -427,9 +430,35 @@ class BarracksSimulator {
     if (this.viewMode === '2d') {
       e.preventDefault();
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      this.scale = Math.max(50, Math.min(200, this.scale * delta));
-      this.render();
+      this.targetScale = Math.max(50, Math.min(200, this.targetScale * delta));
+      this.startZoomAnimation();
     }
+  }
+
+  startZoomAnimation() {
+    if (this.zoomAnimating || this.viewMode !== '2d') return;
+    this.zoomAnimating = true;
+
+    const step = () => {
+      if (this.viewMode !== '2d') {
+        this.zoomAnimating = false;
+        return;
+      }
+
+      const diff = this.targetScale - this.scale;
+      if (Math.abs(diff) < 0.1) {
+        this.scale = this.targetScale;
+        this.zoomAnimating = false;
+        this.render();
+        return;
+      }
+
+      this.scale += diff * this.zoomLerp;
+      this.render2D();
+      requestAnimationFrame(step);
+    };
+
+    requestAnimationFrame(step);
   }
 
   onDoubleClick(e) {
