@@ -173,11 +173,86 @@ export function createFurnitureMesh(type, THREE) {
 }
 
 function addBedDetails(group, config, THREE) {
+  const railThickness = 0.04;
+  const postThickness = 0.05;
+  const mattressHeight = 0.15;
+  const mattressTopY = 0.62; // roughly 2-drawer chest height
+  const mattressBaseY = mattressTopY - mattressHeight;
+  const frameY = mattressBaseY - 0.02;
+  const headboardHeight = Math.max(config.height + 0.2, 0.9);
+  const footboardHeight = Math.max(config.height * 0.9, 0.7);
+
+  // Remove solid base and create metal frame
+  const base = group.children[0];
+  group.remove(base);
+
+  const metalMaterial = new THREE.MeshLambertMaterial({ color: 0x1f1f1f });
+
+  // Side rails
+  const sideRailGeom = new THREE.BoxGeometry(railThickness, railThickness, config.depth - 0.02);
+  const leftRail = new THREE.Mesh(sideRailGeom, metalMaterial);
+  leftRail.position.set(-config.width / 2 + railThickness / 2, frameY, 0);
+  leftRail.castShadow = true;
+  group.add(leftRail);
+
+  const rightRail = new THREE.Mesh(sideRailGeom, metalMaterial);
+  rightRail.position.set(config.width / 2 - railThickness / 2, frameY, 0);
+  rightRail.castShadow = true;
+  group.add(rightRail);
+
+  // End rails
+  const endRailGeom = new THREE.BoxGeometry(config.width - 0.02, railThickness, railThickness);
+  const headRail = new THREE.Mesh(endRailGeom, metalMaterial);
+  headRail.position.set(0, frameY, -config.depth / 2 + railThickness / 2);
+  headRail.castShadow = true;
+  group.add(headRail);
+
+  const footRail = new THREE.Mesh(endRailGeom, metalMaterial);
+  footRail.position.set(0, frameY, config.depth / 2 - railThickness / 2);
+  footRail.castShadow = true;
+  group.add(footRail);
+
+  // Posts
+  const postGeom = new THREE.BoxGeometry(postThickness, headboardHeight, postThickness);
+  const postPositions = [
+    [-config.width / 2 + postThickness / 2, headboardHeight / 2, -config.depth / 2 + postThickness / 2],
+    [config.width / 2 - postThickness / 2, headboardHeight / 2, -config.depth / 2 + postThickness / 2],
+  ];
+  postPositions.forEach((p) => {
+    const post = new THREE.Mesh(postGeom, metalMaterial);
+    post.position.set(...p);
+    post.castShadow = true;
+    group.add(post);
+  });
+
+  const footPostGeom = new THREE.BoxGeometry(postThickness, footboardHeight, postThickness);
+  const footPostPositions = [
+    [-config.width / 2 + postThickness / 2, footboardHeight / 2, config.depth / 2 - postThickness / 2],
+    [config.width / 2 - postThickness / 2, footboardHeight / 2, config.depth / 2 - postThickness / 2],
+  ];
+  footPostPositions.forEach((p) => {
+    const post = new THREE.Mesh(footPostGeom, metalMaterial);
+    post.position.set(...p);
+    post.castShadow = true;
+    group.add(post);
+  });
+
+  // Head/foot horizontal top rails (no slats)
+  const headTopRail = new THREE.Mesh(endRailGeom, metalMaterial);
+  headTopRail.position.set(0, headboardHeight - railThickness / 2, -config.depth / 2 + railThickness / 2);
+  headTopRail.castShadow = true;
+  group.add(headTopRail);
+
+  const footTopRail = new THREE.Mesh(endRailGeom, metalMaterial);
+  footTopRail.position.set(0, footboardHeight - railThickness / 2, config.depth / 2 - railThickness / 2);
+  footTopRail.castShadow = true;
+  group.add(footTopRail);
+
   // Mattress
-  const mattressGeometry = new THREE.BoxGeometry(config.width - 0.05, 0.15, config.depth - 0.1);
+  const mattressGeometry = new THREE.BoxGeometry(config.width - 0.05, mattressHeight, config.depth - 0.1);
   const mattressMaterial = new THREE.MeshLambertMaterial({ color: 0xF5F5DC });
   const mattress = new THREE.Mesh(mattressGeometry, mattressMaterial);
-  mattress.position.y = config.height + 0.075;
+  mattress.position.y = mattressBaseY + mattressHeight / 2;
   mattress.castShadow = true;
   group.add(mattress);
 
@@ -185,44 +260,9 @@ function addBedDetails(group, config, THREE) {
   const pillowGeometry = new THREE.BoxGeometry(0.5, 0.1, 0.3);
   const pillowMaterial = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
   const pillow = new THREE.Mesh(pillowGeometry, pillowMaterial);
-  pillow.position.set(0, config.height + 0.2, -config.depth / 2 + 0.25);
+  pillow.position.set(0, mattressBaseY + mattressHeight + 0.05, -config.depth / 2 + 0.25);
   pillow.castShadow = true;
   group.add(pillow);
-}
-
-function addBunkBedDetails(group, config, THREE) {
-  // Lower mattress
-  const mattressGeometry = new THREE.BoxGeometry(config.width - 0.05, 0.1, config.depth - 0.1);
-  const mattressMaterial = new THREE.MeshLambertMaterial({ color: 0xF5F5DC });
-
-  const lowerMattress = new THREE.Mesh(mattressGeometry, mattressMaterial);
-  lowerMattress.position.y = 0.4;
-  lowerMattress.castShadow = true;
-  group.add(lowerMattress);
-
-  // Upper mattress
-  const upperMattress = new THREE.Mesh(mattressGeometry, mattressMaterial);
-  upperMattress.position.y = 1.2;
-  upperMattress.castShadow = true;
-  group.add(upperMattress);
-
-  // Upper bed frame
-  const frameGeometry = new THREE.BoxGeometry(config.width, 0.05, config.depth);
-  const frameMaterial = new THREE.MeshLambertMaterial({ color: 0x3E2723 });
-  const upperFrame = new THREE.Mesh(frameGeometry, frameMaterial);
-  upperFrame.position.y = 1.1;
-  group.add(upperFrame);
-
-  // Ladder
-  const ladderMaterial = new THREE.MeshLambertMaterial({ color: 0x5D4037 });
-  for (let i = 0; i < 4; i++) {
-    const rung = new THREE.Mesh(
-      new THREE.BoxGeometry(0.05, 0.02, 0.3),
-      ladderMaterial
-    );
-    rung.position.set(config.width / 2 - 0.1, 0.3 + i * 0.25, config.depth / 2 - 0.15);
-    group.add(rung);
-  }
 }
 
 function addDeskDetails(group, config, THREE) {
