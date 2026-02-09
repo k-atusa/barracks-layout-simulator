@@ -3,9 +3,9 @@ export const FURNITURE_TYPES = {
   'single-bed': {
     name: 'Single Bed',
     nameEn: 'Single Bed',
-    width: 0.9,      // meters
-    depth: 2.0,
-    height: 0.5,
+    width: 1.0,      // meters
+    depth: 2.15,
+    height: 0.7,
     color: 0x8B4513,
     icon: '🛏️'
   },
@@ -23,7 +23,7 @@ export const FURNITURE_TYPES = {
     nameEn: 'Desk',
     width: 1.06,
     depth: 0.6,
-    height: 0.75,
+    height: 0.78,
     color: 0x795548,
     icon: '🪑'
   },
@@ -51,7 +51,7 @@ export const FURNITURE_TYPES = {
     nameEn: '5-Drawer Dresser',
     width: 0.76,
     depth: 0.6,
-    height: 1.2,
+    height: 1.1,
     color: 0x6D4C41,
     icon: '🗄️',
     drawerCount: 5
@@ -61,7 +61,7 @@ export const FURNITURE_TYPES = {
     nameEn: '2-Drawer Bedside Chest',
     width: 0.5,
     depth: 0.5,
-    height: 0.5,
+    height: 0.62,
     color: 0x5D4037,
     icon: '🗄️',
     drawerCount: 2
