@@ -150,6 +150,9 @@ export function createFurnitureMesh(type, THREE) {
     case 'bed-drawer-2':
       addDresserDetails(group, config, THREE);
       break;
+    case 'trash-bin':
+      addTrashBinDetails(group, config, THREE);
+      break;
   }
 
   // Add outline for selection
@@ -444,6 +447,86 @@ function addDresserDetails(group, config, THREE) {
     handle.position.set(0, drawerHeight / 2 + i * drawerHeight, config.depth / 2 + 0.03);
     group.add(handle);
   }
+}
+
+function addTrashBinDetails(group, config, THREE) {
+  const bodyColor = 0x8fa3a6;
+  const lidColor = 0xdcdcdc;
+  const trimColor = 0x9aa1a3;
+  const pedalColor = 0xb0b0b0;
+  const darkTrim = 0x1f1f1f;
+
+  const bodyRadius = Math.min(config.width, config.depth) / 2 - 0.01;
+  const bodyHeight = config.height * 0.78;
+  const lidHeight = config.height * 0.12;
+  const topRimHeight = config.height * 0.04;
+  const baseRimHeight = config.height * 0.03;
+
+  // Replace main body with cylinder
+  const bodyMat = new THREE.MeshLambertMaterial({ color: bodyColor });
+  const bodyGeo = new THREE.CylinderGeometry(bodyRadius, bodyRadius, bodyHeight, 32);
+  group.children[0].geometry.dispose();
+  group.children[0].geometry = bodyGeo;
+  group.children[0].material = bodyMat;
+  group.children[0].position.set(0, bodyHeight / 2, 0);
+
+  // Top rim (metal ring)
+  const rimGeo = new THREE.CylinderGeometry(bodyRadius + 0.01, bodyRadius + 0.01, topRimHeight, 32, 1, true);
+  const rimMat = new THREE.MeshLambertMaterial({ color: trimColor });
+  const rim = new THREE.Mesh(rimGeo, rimMat);
+  rim.position.set(0, bodyHeight + topRimHeight / 2, 0);
+  group.add(rim);
+
+  // Lid
+  const lidGeo = new THREE.CylinderGeometry(bodyRadius + 0.02, bodyRadius + 0.02, lidHeight, 32);
+  const lidMat = new THREE.MeshLambertMaterial({ color: lidColor });
+  const lid = new THREE.Mesh(lidGeo, lidMat);
+  lid.position.set(0, bodyHeight + topRimHeight + lidHeight / 2, 0);
+  group.add(lid);
+
+  // Lid edge trim
+  const lidEdgeGeo = new THREE.CylinderGeometry(bodyRadius + 0.025, bodyRadius + 0.025, 0.01, 32);
+  const lidEdge = new THREE.Mesh(lidEdgeGeo, new THREE.MeshLambertMaterial({ color: darkTrim }));
+  lidEdge.position.set(0, bodyHeight + topRimHeight + lidHeight + 0.005, 0);
+  group.add(lidEdge);
+
+  // Base rim
+  const baseGeo = new THREE.CylinderGeometry(bodyRadius + 0.015, bodyRadius + 0.015, baseRimHeight, 32);
+  const base = new THREE.Mesh(baseGeo, new THREE.MeshLambertMaterial({ color: darkTrim }));
+  base.position.set(0, baseRimHeight / 2, 0);
+  group.add(base);
+
+  // Pedal
+  const pedalBase = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05, 0.05, 0.02, 16),
+    new THREE.MeshLambertMaterial({ color: darkTrim })
+  );
+  pedalBase.position.set(0, 0.01, bodyRadius + 0.07);
+  pedalBase.rotation.x = Math.PI / 2;
+  group.add(pedalBase);
+
+  const pedal = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.02, 0.14),
+    new THREE.MeshLambertMaterial({ color: pedalColor })
+  );
+  pedal.position.set(0, 0.03, bodyRadius + 0.11);
+  pedal.rotation.x = -Math.PI / 8;
+  group.add(pedal);
+
+  // Hinge/handle on back
+  const hinge = new THREE.Mesh(
+    new THREE.BoxGeometry(0.03, 0.08, 0.04),
+    new THREE.MeshLambertMaterial({ color: darkTrim })
+  );
+  hinge.position.set(bodyRadius + 0.02, bodyHeight + topRimHeight + lidHeight / 2, 0);
+  group.add(hinge);
+
+  const handle = new THREE.Mesh(
+    new THREE.BoxGeometry(0.03, 0.12, 0.08),
+    new THREE.MeshLambertMaterial({ color: darkTrim })
+  );
+  handle.position.set(bodyRadius + 0.05, bodyHeight + topRimHeight + lidHeight / 2, 0);
+  group.add(handle);
 }
 
 // Create 2D representation of furniture
