@@ -13,6 +13,19 @@ class BarracksSimulator {
 
     // View mode
     this.viewMode = '2d'; // '2d' or '3d'
+    this.view360 = {
+      active: false,
+      yaw: 0,
+      pitch: 0,
+      isLooking: false,
+      lookStart: { x: 0, y: 0 },
+      yawStart: 0,
+      pitchStart: 0,
+      moveSpeed: 1.2,
+      lookSensitivity: 0.003,
+      keys: { forward: false, back: false, left: false, right: false },
+      lastTime: 0
+    };
 
     // Room dimensions (meters) — USAG Humphreys barracks
     this.roomWidth = 3.5;
@@ -201,6 +214,9 @@ class BarracksSimulator {
 
     // Keyboard events
     window.addEventListener('keydown', (e) => this.onKeyDown(e));
+    window.addEventListener('keyup', (e) => this.onKeyUp(e));
+
+    document.addEventListener('pointerlockchange', () => this.onPointerLockChange());
 
     // Drag and drop from furniture panel
     this.setupDragDrop();
@@ -244,6 +260,8 @@ class BarracksSimulator {
     // View buttons
     document.getElementById('btn-2d').addEventListener('click', () => this.setViewMode('2d'));
     document.getElementById('btn-3d').addEventListener('click', () => this.setViewMode('3d'));
+    document.getElementById('btn-360').addEventListener('click', () => this.setViewMode('360'));
+    document.getElementById('exit-360').addEventListener('click', () => this.setViewMode('3d'));
 
     // Room settings
     document.getElementById('apply-room-size').addEventListener('click', () => {
@@ -325,9 +343,20 @@ class BarracksSimulator {
 
     document.getElementById('btn-2d').classList.toggle('active', mode === '2d');
     document.getElementById('btn-3d').classList.toggle('active', mode === '3d');
+    document.getElementById('btn-360').classList.toggle('active', mode === '360');
 
     this.canvas2D.style.display = mode === '2d' ? 'block' : 'none';
     this.canvas3D.style.display = mode === '3d' ? 'block' : 'none';
+
+    if (mode === '360') {
+      this.canvas2D.style.display = 'none';
+      this.canvas3D.style.display = 'block';
+      document.body.classList.add('mode-360');
+      this.enter360View();
+    } else {
+      document.body.classList.remove('mode-360');
+      this.exit360View();
+    }
 
     if (mode === '3d') {
       this.controls.enabled = true;
@@ -351,7 +380,7 @@ class BarracksSimulator {
     this.canvas3D.width = wrapper.clientWidth;
     this.canvas3D.height = wrapper.clientHeight;
 
-    if (this.viewMode === '3d') {
+    if (this.viewMode === '3d' || this.viewMode === '360') {
       this.camera.aspect = this.canvas3D.width / this.canvas3D.height;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(this.canvas3D.width, this.canvas3D.height);
@@ -367,6 +396,13 @@ class BarracksSimulator {
     const rect = activeCanvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    if (this.viewMode === '360') {
+      if (document.pointerLockElement !== this.canvas3D) {
+        this.canvas3D.requestPointerLock();
+      }
+      return;
+    }
 
     if (this.viewMode === '2d') {
       // Check if clicked on furniture
@@ -413,6 +449,18 @@ class BarracksSimulator {
   }
 
   onMouseMove(e) {
+    if (this.viewMode === '360') {
+      if (!this.view360.isLooking) return;
+      const dx = e.movementX || 0;
+      const dy = e.movementY || 0;
+      this.view360.yaw -= dx * this.view360.lookSensitivity;
+      this.view360.pitch -= dy * this.view360.lookSensitivity;
+      const maxPitch = Math.PI / 2 - 0.1;
+      this.view360.pitch = Math.max(-maxPitch, Math.min(maxPitch, this.view360.pitch));
+      this.camera.rotation.set(this.view360.pitch, this.view360.yaw, 0, 'YXZ');
+      return;
+    }
+
     if (this.viewMode !== '2d') return;
 
     const rect = this.canvas2D.getBoundingClientRect();
@@ -472,6 +520,9 @@ class BarracksSimulator {
   }
 
   onMouseUp(e) {
+    if (this.viewMode === '360') {
+      return;
+    }
     if (this.isDragging && this.selectedFurniture) {
       const config = this.selectedFurniture.userData.config;
       if (typeof this.room3D.constrainToUsableArea === 'function') {
@@ -508,6 +559,8 @@ class BarracksSimulator {
       const delta = e.deltaY > 0 ? 0.96 : 1.04;
       this.targetScale = Math.max(50, Math.min(400, this.targetScale * delta));
       this.startZoomAnimation();
+    } else if (this.viewMode === '360') {
+      e.preventDefault();
     } else if (this.viewMode === '3d') {
       e.preventDefault();
       this.start3DZoom(e.deltaY);
@@ -560,7 +613,74 @@ class BarracksSimulator {
     }
   }
 
+  enter360View() {
+    this.view360.active = true;
+    this.controls.enabled = false;
+
+    this.onResize();
+
+    const mainRoomDepth = this.roomDepth - 1.5;
+    const startX = 0;
+    const startZ = -this.roomDepth / 2 + mainRoomDepth / 2;
+    const startY = 1.6;
+
+    this.camera.position.set(startX, startY, startZ);
+    this.view360.yaw = 0;
+    this.view360.pitch = 0;
+    this.camera.rotation.order = 'YXZ';
+    this.camera.rotation.set(0, 0, 0, 'YXZ');
+    this.view360.lastTime = performance.now();
+
+    if (document.pointerLockElement !== this.canvas3D) {
+      this.canvas3D.requestPointerLock();
+    }
+
+    this.animate360();
+  }
+
+  exit360View() {
+    this.view360.active = false;
+    this.view360.isLooking = false;
+    this.view360.keys = { forward: false, back: false, left: false, right: false };
+
+    if (document.pointerLockElement === this.canvas3D) {
+      document.exitPointerLock();
+    }
+  }
+
+  onPointerLockChange() {
+    this.view360.isLooking = document.pointerLockElement === this.canvas3D;
+  }
+
   onKeyDown(e) {
+    if (this.viewMode === '360') {
+      if (e.code === 'Escape') {
+        this.setViewMode('3d');
+        return;
+      }
+      switch (e.code) {
+        case 'KeyW':
+        case 'ArrowUp':
+          this.view360.keys.forward = true;
+          e.preventDefault();
+          return;
+        case 'KeyS':
+        case 'ArrowDown':
+          this.view360.keys.back = true;
+          e.preventDefault();
+          return;
+        case 'KeyA':
+        case 'ArrowLeft':
+          this.view360.keys.left = true;
+          e.preventDefault();
+          return;
+        case 'KeyD':
+        case 'ArrowRight':
+          this.view360.keys.right = true;
+          e.preventDefault();
+          return;
+      }
+    }
     // Ignore shortcuts when typing in inputs
     const tagName = e.target?.tagName?.toLowerCase();
     if (tagName === 'input' || tagName === 'textarea' || e.target?.isContentEditable) {
@@ -597,6 +717,28 @@ class BarracksSimulator {
 
     this.updatePropertiesPanel();
     this.render();
+  }
+
+  onKeyUp(e) {
+    if (this.viewMode !== '360') return;
+    switch (e.code) {
+      case 'KeyW':
+      case 'ArrowUp':
+        this.view360.keys.forward = false;
+        break;
+      case 'KeyS':
+      case 'ArrowDown':
+        this.view360.keys.back = false;
+        break;
+      case 'KeyA':
+      case 'ArrowLeft':
+        this.view360.keys.left = false;
+        break;
+      case 'KeyD':
+      case 'ArrowRight':
+        this.view360.keys.right = false;
+        break;
+    }
   }
 
   getFurnitureAt2D(x, y) {
@@ -1213,6 +1355,42 @@ class BarracksSimulator {
     }
 
     this.controls.update();
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  animate360(time = performance.now()) {
+    if (this.viewMode !== '360') return;
+
+    requestAnimationFrame((t) => this.animate360(t));
+
+    const dt = Math.min(0.05, (time - this.view360.lastTime) / 1000);
+    this.view360.lastTime = time;
+
+    const move = new THREE.Vector3();
+    const forward = new THREE.Vector3();
+    this.camera.getWorldDirection(forward);
+    forward.y = 0;
+    if (forward.lengthSq() > 0) {
+      forward.normalize();
+    }
+    const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+
+    if (this.view360.keys.forward) move.add(forward);
+    if (this.view360.keys.back) move.sub(forward);
+    if (this.view360.keys.right) move.add(right);
+    if (this.view360.keys.left) move.sub(right);
+
+    if (move.lengthSq() > 0) {
+      move.normalize().multiplyScalar(this.view360.moveSpeed * dt);
+      const next = this.camera.position.clone().add(move);
+      if (typeof this.room3D?.constrainToUsableArea === 'function') {
+        const constrained = this.room3D.constrainToUsableArea(next.x, next.z, { width: 0.4, depth: 0.4 });
+        this.camera.position.set(constrained.x, this.camera.position.y, constrained.z);
+      } else {
+        this.camera.position.copy(next);
+      }
+    }
+
     this.renderer.render(this.scene, this.camera);
   }
 }

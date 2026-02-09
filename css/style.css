@@ -200,6 +200,53 @@ body {
   color: var(--text-muted);
 }
 
+/* 360 View Mode */
+.view-360-ui {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  backdrop-filter: blur(4px);
+}
+
+.view-360-title {
+  font-weight: 700;
+  color: #fff;
+}
+
+.view-360-hint {
+  font-size: 0.8rem;
+  color: #ddd;
+}
+
+body.mode-360 .header,
+body.mode-360 .sidebar,
+body.mode-360 .footer,
+body.mode-360 .canvas-info {
+  display: none;
+}
+
+body.mode-360 .main-container {
+  flex: 1;
+}
+
+body.mode-360 .canvas-container {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+}
+
+body.mode-360 #view-360-ui {
+  display: flex;
+}
+
 /* Properties Panel */
 .property-section {
   margin-bottom: 20px;

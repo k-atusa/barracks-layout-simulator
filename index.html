@@ -16,6 +16,7 @@
       <div class="view-controls">
         <button id="btn-2d" class="view-btn active">2D View</button>
         <button id="btn-3d" class="view-btn">3D View</button>
+        <button id="btn-360" class="view-btn">360 View</button>
       </div>
     </header>
 
@@ -110,6 +111,11 @@
         <div id="canvas-wrapper">
           <canvas id="canvas-2d"></canvas>
           <canvas id="canvas-3d"></canvas>
+        </div>
+        <div id="view-360-ui" class="view-360-ui">
+          <div class="view-360-title">360 View</div>
+          <div class="view-360-hint">Drag mouse to look • WASD to move • Esc to exit</div>
+          <button id="exit-360" class="btn-secondary">Exit 360</button>
         </div>
         <div class="canvas-info">
           <span id="room-size">Room Size: 6m x 4m</span>
