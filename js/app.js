@@ -761,15 +761,33 @@ class BarracksSimulator {
     // Reset all furniture colors
     this.furniture.forEach(f => {
       f.userData.isColliding = false;
-      f.children[0].material.color.setHex(f.userData.config.color);
+      f.traverse(child => {
+        if (!child.isMesh || !child.material) return;
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach(mat => {
+          if (!mat || !mat.color) return;
+          const original = child.userData?.originalColor;
+          if (original) {
+            mat.color.setHex(original);
+          }
+        });
+      });
     });
 
     // Highlight colliding furniture
     collisions.forEach(([i, j]) => {
       this.furniture[i].userData.isColliding = true;
       this.furniture[j].userData.isColliding = true;
-      this.furniture[i].children[0].material.color.setHex(0xc0392b);
-      this.furniture[j].children[0].material.color.setHex(0xc0392b);
+      [this.furniture[i], this.furniture[j]].forEach(f => {
+        f.traverse(child => {
+          if (!child.isMesh || !child.material) return;
+          const materials = Array.isArray(child.material) ? child.material : [child.material];
+          materials.forEach(mat => {
+            if (!mat || !mat.color) return;
+            mat.color.setHex(0xc0392b);
+          });
+        });
+      });
     });
   }
 

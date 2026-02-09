@@ -169,6 +169,19 @@ export function createFurnitureMesh(type, THREE) {
   outlineMesh.name = 'outline';
   group.add(outlineMesh);
 
+  // Store original colors for collision reset
+  group.traverse(child => {
+    if (!child.isMesh || !child.material) return;
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    materials.forEach(mat => {
+      if (!mat || !mat.color) return;
+      child.userData = child.userData || {};
+      if (!child.userData.originalColor) {
+        child.userData.originalColor = mat.color.getHex();
+      }
+    });
+  });
+
   return group;
 }
 
