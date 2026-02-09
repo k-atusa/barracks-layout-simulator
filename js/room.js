@@ -91,7 +91,7 @@ export class Room {
     dressFloor.receiveShadow = true;
     this.group.add(dressFloor);
 
-    // Grid — main room area only
+    // Grid — main room + bottom-left area
     const tileSize = 0.1;
     const linesMat = new THREE.LineBasicMaterial({ color: 0x6B6B5A, transparent: true, opacity: 0.3 });
     const gridGroup = new THREE.Group();
@@ -101,6 +101,8 @@ export class Room {
     const gR = this.width / 2;
     const gT = -this.depth / 2;
     const gB = -this.depth / 2 + this.mainRoomDepth;
+    const bottomZ = this.depth / 2;
+    const partX = this.partitionX;
 
     const tilesX = Math.floor(this.width / tileSize);
     const tilesZ = Math.floor(this.mainRoomDepth / tileSize);
@@ -118,6 +120,27 @@ export class Room {
       const geo = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(gL, 0.002, z),
         new THREE.Vector3(gR, 0.002, z)
+      ]);
+      gridGroup.add(new THREE.Line(geo, linesMat));
+    }
+
+    // Bottom-left area grid (left of partition, bottom section)
+    const tilesXLeft = Math.floor((partX - gL) / tileSize);
+    const tilesZBottom = Math.floor((bottomZ - gB) / tileSize);
+
+    for (let i = 0; i <= tilesXLeft; i++) {
+      const x = gL + i * tileSize;
+      const geo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(x, 0.002, gB),
+        new THREE.Vector3(x, 0.002, bottomZ)
+      ]);
+      gridGroup.add(new THREE.Line(geo, linesMat));
+    }
+    for (let i = 0; i <= tilesZBottom; i++) {
+      const z = gB + i * tileSize;
+      const geo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(gL, 0.002, z),
+        new THREE.Vector3(partX, 0.002, z)
       ]);
       gridGroup.add(new THREE.Line(geo, linesMat));
     }

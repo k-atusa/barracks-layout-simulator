@@ -14,7 +14,7 @@ class BarracksSimulator {
     // Room dimensions (meters) — USAG Humphreys barracks
     this.roomWidth = 3.5;
     this.roomDepth = 5.05;
-    this.roomHeight = 2.8;
+    this.roomHeight = 2.6;
 
     // 2D view settings
     this.scale = 100; // pixels per meter
