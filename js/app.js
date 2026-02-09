@@ -7,6 +7,9 @@ class BarracksSimulator {
     this.canvas2D = document.getElementById('canvas-2d');
     this.canvas3D = document.getElementById('canvas-3d');
     this.ctx = this.canvas2D.getContext('2d');
+    this.dpr = window.devicePixelRatio || 1;
+    this.canvas2DDisplayWidth = 0;
+    this.canvas2DDisplayHeight = 0;
 
     // View mode
     this.viewMode = '2d'; // '2d' or '3d'
@@ -72,14 +75,20 @@ class BarracksSimulator {
 
   setupCanvas() {
     const wrapper = document.getElementById('canvas-wrapper');
-    this.canvas2D.width = wrapper.clientWidth;
-    this.canvas2D.height = wrapper.clientHeight;
+    this.dpr = window.devicePixelRatio || 1;
+    this.canvas2DDisplayWidth = wrapper.clientWidth;
+    this.canvas2DDisplayHeight = wrapper.clientHeight;
+    this.canvas2D.style.width = `${this.canvas2DDisplayWidth}px`;
+    this.canvas2D.style.height = `${this.canvas2DDisplayHeight}px`;
+    this.canvas2D.width = Math.floor(this.canvas2DDisplayWidth * this.dpr);
+    this.canvas2D.height = Math.floor(this.canvas2DDisplayHeight * this.dpr);
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     this.canvas3D.width = wrapper.clientWidth;
     this.canvas3D.height = wrapper.clientHeight;
 
     // Center the view
-    this.panOffset.x = this.canvas2D.width / 2;
-    this.panOffset.y = this.canvas2D.height / 2;
+    this.panOffset.x = this.canvas2DDisplayWidth / 2;
+    this.panOffset.y = this.canvas2DDisplayHeight / 2;
   }
 
   setup3D() {
@@ -299,8 +308,14 @@ class BarracksSimulator {
 
   onResize() {
     const wrapper = document.getElementById('canvas-wrapper');
-    this.canvas2D.width = wrapper.clientWidth;
-    this.canvas2D.height = wrapper.clientHeight;
+    this.dpr = window.devicePixelRatio || 1;
+    this.canvas2DDisplayWidth = wrapper.clientWidth;
+    this.canvas2DDisplayHeight = wrapper.clientHeight;
+    this.canvas2D.style.width = `${this.canvas2DDisplayWidth}px`;
+    this.canvas2D.style.height = `${this.canvas2DDisplayHeight}px`;
+    this.canvas2D.width = Math.floor(this.canvas2DDisplayWidth * this.dpr);
+    this.canvas2D.height = Math.floor(this.canvas2DDisplayHeight * this.dpr);
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     this.canvas3D.width = wrapper.clientWidth;
     this.canvas3D.height = wrapper.clientHeight;
 
@@ -310,8 +325,8 @@ class BarracksSimulator {
       this.renderer.setSize(this.canvas3D.width, this.canvas3D.height);
     }
 
-    this.panOffset.x = this.canvas2D.width / 2;
-    this.panOffset.y = this.canvas2D.height / 2;
+    this.panOffset.x = this.canvas2DDisplayWidth / 2;
+    this.panOffset.y = this.canvas2DDisplayHeight / 2;
     this.render();
   }
 
@@ -459,7 +474,7 @@ class BarracksSimulator {
     if (this.viewMode === '2d') {
       e.preventDefault();
       const delta = e.deltaY > 0 ? 0.96 : 1.04;
-      this.targetScale = Math.max(50, Math.min(200, this.targetScale * delta));
+      this.targetScale = Math.max(50, Math.min(400, this.targetScale * delta));
       this.startZoomAnimation();
     } else if (this.viewMode === '3d') {
       e.preventDefault();
@@ -980,11 +995,11 @@ class BarracksSimulator {
 
   render2D() {
     const ctx = this.ctx;
-    ctx.clearRect(0, 0, this.canvas2D.width, this.canvas2D.height);
+    ctx.clearRect(0, 0, this.canvas2DDisplayWidth, this.canvas2DDisplayHeight);
 
     // Draw background
     ctx.fillStyle = '#0f0f1a';
-    ctx.fillRect(0, 0, this.canvas2D.width, this.canvas2D.height);
+    ctx.fillRect(0, 0, this.canvas2DDisplayWidth, this.canvas2DDisplayHeight);
 
     // Draw room (with optional grid highlights)
     let highlightLines = null;
