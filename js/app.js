@@ -97,7 +97,7 @@ class BarracksSimulator {
         {
           type: 'single-bed',
           x: 1.25,
-          z: -0.050000000000000044,
+          z: -0.08000000000000004,
           rotation: Math.PI
         },
         {
@@ -116,6 +116,18 @@ class BarracksSimulator {
           type: 'bed-drawer-2',
           x: 0.4610831414279115,
           z: 0.7249999999999999,
+          rotation: Math.PI
+        },
+        {
+          type: 'trash-bin',
+          x: -1.55,
+          z: -2.3249999999999997,
+          rotation: 0
+        },
+        {
+          type: 'chair',
+          x: -0.6499999999999999,
+          z: -1.625,
           rotation: Math.PI
         }
       ]
