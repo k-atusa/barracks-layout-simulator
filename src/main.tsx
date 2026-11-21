@@ -11,7 +11,7 @@ createRoot(document.getElementById("root")!).render(
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
       <TooltipProvider>
         <App />
-        <Toaster position="bottom-left" richColors />
+        <Toaster position="top-center" richColors />
       </TooltipProvider>
     </ThemeProvider>
   </StrictMode>

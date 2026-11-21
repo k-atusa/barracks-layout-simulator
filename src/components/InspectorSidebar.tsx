@@ -45,6 +45,8 @@ import type {
 interface InspectorSidebarProps {
   state: SimulatorStateSnapshot
   isDark: boolean
+  mobileOpen: boolean
+  onMobileClose: () => void
   onToggleTheme: () => void
   onViewModeChange: (mode: ViewMode) => void
   onDeselectFurniture: () => void
@@ -62,6 +64,8 @@ interface InspectorSidebarProps {
 export function InspectorSidebar({
   state,
   isDark,
+  mobileOpen,
+  onMobileClose,
   onToggleTheme,
   onViewModeChange,
   onDeselectFurniture,
@@ -114,66 +118,107 @@ export function InspectorSidebar({
   }
 
   return (
-    <aside className="liquid-glass-panel fixed top-3 right-3 bottom-3 z-20 flex w-[296px] flex-col overflow-hidden rounded-2xl">
-      {/* Sidebar Top: Brand + Theme Toggle */}
-      <div className="relative z-10 flex shrink-0 items-center justify-between px-4 pt-3.5 pb-2.5">
-        <div className="flex items-center gap-2">
-          <Home className="size-4 text-foreground" />
-          <h1 className="text-sm font-semibold tracking-tight">Barracks Layout Simulator</h1>
-        </div>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={onToggleTheme}
-                aria-label="Toggle theme"
-                className="rounded-lg hover:bg-foreground/10"
-              >
-                {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-              </Button>
-            }
-          />
-          <TooltipContent side="left">Switch to {isDark ? "light" : "dark"} mode</TooltipContent>
-        </Tooltip>
-      </div>
+    <>
+      {/* Mobile Bottom Sheet Backdrop */}
+      {mobileOpen && (
+        <div
+          aria-hidden="true"
+          onClick={onMobileClose}
+          className="fixed inset-0 z-30 bg-black/18 backdrop-blur-[2px] dark:bg-black/45 md:hidden"
+        />
+      )}
 
-      {/* View Mode Switcher (Pill buttons directly in row — no outer container) */}
-      <div
-        role="tablist"
-        aria-label="View mode"
-        className="relative z-10 flex shrink-0 items-center gap-1.5 border-b border-foreground/10 px-4 pb-3"
+      <aside
+        className={[
+          "liquid-glass-panel fixed z-40 flex-col overflow-hidden rounded-2xl",
+          // Mobile: slide-up bottom sheet
+          mobileOpen
+            ? "inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] flex max-h-[78dvh]"
+            : "hidden",
+          // Desktop: fixed floating right sidebar
+          "md:top-3 md:right-3 md:bottom-3 md:left-auto md:z-20 md:flex md:max-h-none md:w-[296px]",
+        ].join(" ")}
       >
-        {(
-          [
-            { id: "2d", label: "2D View", icon: Grid2x2 },
-            { id: "3d", label: "3D View", icon: Box },
-            { id: "360", label: "360°", icon: Compass },
-          ] as const
-        ).map(({ id, label, icon: Icon }) => {
-          const isActive = state.viewMode === id
-          return (
+        {/* Mobile grab handle */}
+        <div className="relative z-10 flex shrink-0 justify-center pt-2 md:hidden">
+          <div className="h-1 w-9 rounded-full bg-foreground/20" />
+        </div>
+
+        {/* Sidebar Top: Brand + Theme Toggle (+ Mobile Close) */}
+        <div className="relative z-10 flex shrink-0 items-center justify-between px-4 pt-2.5 pb-2.5 md:pt-3.5">
+          <div className="flex items-center gap-2">
+            <Home className="size-4 text-foreground" />
+            <h1 className="text-sm font-semibold tracking-tight">Barracks Layout Simulator</h1>
+          </div>
+          <div className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={onToggleTheme}
+                    aria-label="Toggle theme"
+                    className="rounded-lg hover:bg-foreground/10"
+                  >
+                    {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                  </Button>
+                }
+              />
+              <TooltipContent side="left">
+                Switch to {isDark ? "light" : "dark"} mode
+              </TooltipContent>
+            </Tooltip>
             <Button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              size="sm"
-              variant={isActive ? "default" : "ghost"}
-              onClick={() => onViewModeChange(id)}
-              className={
-                isActive
-                  ? "flex-1 rounded-full font-semibold shadow-sm"
-                  : "flex-1 rounded-full text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
-              }
+              variant="ghost"
+              size="icon-sm"
+              onClick={onMobileClose}
+              aria-label="Close properties panel"
+              className="rounded-lg hover:bg-foreground/10 md:hidden"
             >
-              <Icon className="size-3.5" />
-              {label}
+              <X className="size-4" />
             </Button>
-          )
-        })}
-      </div>
+          </div>
+        </div>
+
+        {/* View Mode Switcher (Pill buttons directly in row — no outer container) */}
+        <div
+          role="tablist"
+          aria-label="View mode"
+          className="relative z-10 flex shrink-0 items-center gap-1.5 border-b border-foreground/10 px-4 pb-3"
+        >
+          {(
+            [
+              { id: "2d", label: "2D View", icon: Grid2x2 },
+              { id: "3d", label: "3D View", icon: Box },
+              { id: "360", label: "360°", icon: Compass },
+            ] as const
+          ).map(({ id, label, icon: Icon }) => {
+            const isActive = state.viewMode === id
+            return (
+              <Button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                size="sm"
+                variant={isActive ? "default" : "ghost"}
+                onClick={() => {
+                  onViewModeChange(id)
+                  if (id === "360") onMobileClose()
+                }}
+                className={
+                  isActive
+                    ? "flex-1 rounded-full font-semibold shadow-sm"
+                    : "flex-1 rounded-full text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+                }
+              >
+                <Icon className="size-3.5" />
+                {label}
+              </Button>
+            )
+          })}
+        </div>
 
       <ScrollArea className="relative z-10 min-h-0 flex-1 overflow-hidden">
         <div className="flex flex-col">
@@ -488,5 +533,6 @@ export function InspectorSidebar({
         </div>
       </ScrollArea>
     </aside>
+    </>
   )
 }

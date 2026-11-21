@@ -133,13 +133,21 @@ export class BarracksSimulatorEngine {
     yaw: 0,
     pitch: 0,
     isLooking: false,
+    mouseDragLooking: false,
+    lastMouseLook: { x: 0, y: 0 },
+    touchLookId: null as number | null,
+    lastTouchLook: { x: 0, y: 0 },
+    pinchStartDist: null as number | null,
+    pinchStartFov: 60,
     moveSpeed: 1.2,
     lookSensitivity: 0.003,
+    touchLookSensitivity: 0.0045,
     baseFov: 60,
     minFov: 25,
     maxFov: 90,
     fovSensitivity: 0.04,
     keys: { forward: false, back: false, left: false, right: false },
+    virtualMove: { x: 0, y: 0 },
     lastTime: 0,
     fovAnim: null as { start: number; from: number; to: number; duration: number } | null,
   }
@@ -168,6 +176,15 @@ export class BarracksSimulatorEngine {
   private panStart = { x: 0, y: 0 }
   private panOffsetStart = { x: 0, y: 0 }
 
+  // Touch gesture state
+  private touch2DMode: "none" | "drag" | "pan" | "pinch" = "none"
+  private touch2DPinchStartDist = 0
+  private touch2DPinchStartScale = 100
+  private touch2DPinchMid = { x: 0, y: 0 }
+  private touch2DPinchStartPan = { x: 0, y: 0 }
+  private lastTap2D = { time: 0, x: 0, y: 0, index: -1 }
+  private touch3DTapStart: { time: number; x: number; y: number } | null = null
+
   private options: SimulatorOptions = {
     showGrid: true,
     showWalls: true,
@@ -195,6 +212,12 @@ export class BarracksSimulatorEngine {
   private boundOnKeyDown: (e: KeyboardEvent) => void
   private boundOnKeyUp: (e: KeyboardEvent) => void
   private boundOnPointerLockChange: () => void
+  private boundOnTouchStart2D: (e: TouchEvent) => void
+  private boundOnTouchMove2D: (e: TouchEvent) => void
+  private boundOnTouchEnd2D: (e: TouchEvent) => void
+  private boundOnTouchStart3D: (e: TouchEvent) => void
+  private boundOnTouchMove3D: (e: TouchEvent) => void
+  private boundOnTouchEnd3D: (e: TouchEvent) => void
 
   constructor(
     wrapper: HTMLElement,
@@ -226,6 +249,12 @@ export class BarracksSimulatorEngine {
     this.boundOnKeyDown = (e) => this.onKeyDown(e)
     this.boundOnKeyUp = (e) => this.onKeyUp(e)
     this.boundOnPointerLockChange = () => this.onPointerLockChange()
+    this.boundOnTouchStart2D = (e) => this.onTouchStart2D(e)
+    this.boundOnTouchMove2D = (e) => this.onTouchMove2D(e)
+    this.boundOnTouchEnd2D = (e) => this.onTouchEnd2D(e)
+    this.boundOnTouchStart3D = (e) => this.onTouchStart3D(e)
+    this.boundOnTouchMove3D = (e) => this.onTouchMove3D(e)
+    this.boundOnTouchEnd3D = (e) => this.onTouchEnd3D(e)
 
     this.setupCanvas()
     this.setup3D()
@@ -322,10 +351,18 @@ export class BarracksSimulatorEngine {
     window.addEventListener("mouseup", this.boundOnMouseUp)
     this.canvas2D.addEventListener("wheel", this.boundOnWheel, { passive: false })
     this.canvas2D.addEventListener("dblclick", this.boundOnDoubleClick)
+    this.canvas2D.addEventListener("touchstart", this.boundOnTouchStart2D, { passive: false })
+    this.canvas2D.addEventListener("touchmove", this.boundOnTouchMove2D, { passive: false })
+    this.canvas2D.addEventListener("touchend", this.boundOnTouchEnd2D, { passive: false })
+    this.canvas2D.addEventListener("touchcancel", this.boundOnTouchEnd2D, { passive: false })
 
     this.canvas3D.addEventListener("mousedown", this.boundOnMouseDown)
     this.canvas3D.addEventListener("wheel", this.boundOnWheel, { passive: false })
     this.canvas3D.addEventListener("dblclick", this.boundOnDoubleClick)
+    this.canvas3D.addEventListener("touchstart", this.boundOnTouchStart3D, { passive: false })
+    this.canvas3D.addEventListener("touchmove", this.boundOnTouchMove3D, { passive: false })
+    this.canvas3D.addEventListener("touchend", this.boundOnTouchEnd3D, { passive: false })
+    this.canvas3D.addEventListener("touchcancel", this.boundOnTouchEnd3D, { passive: false })
 
     window.addEventListener("keydown", this.boundOnKeyDown)
     window.addEventListener("keyup", this.boundOnKeyUp)
@@ -346,10 +383,18 @@ export class BarracksSimulatorEngine {
     window.removeEventListener("mouseup", this.boundOnMouseUp)
     this.canvas2D.removeEventListener("wheel", this.boundOnWheel)
     this.canvas2D.removeEventListener("dblclick", this.boundOnDoubleClick)
+    this.canvas2D.removeEventListener("touchstart", this.boundOnTouchStart2D)
+    this.canvas2D.removeEventListener("touchmove", this.boundOnTouchMove2D)
+    this.canvas2D.removeEventListener("touchend", this.boundOnTouchEnd2D)
+    this.canvas2D.removeEventListener("touchcancel", this.boundOnTouchEnd2D)
 
     this.canvas3D.removeEventListener("mousedown", this.boundOnMouseDown)
     this.canvas3D.removeEventListener("wheel", this.boundOnWheel)
     this.canvas3D.removeEventListener("dblclick", this.boundOnDoubleClick)
+    this.canvas3D.removeEventListener("touchstart", this.boundOnTouchStart3D)
+    this.canvas3D.removeEventListener("touchmove", this.boundOnTouchMove3D)
+    this.canvas3D.removeEventListener("touchend", this.boundOnTouchEnd3D)
+    this.canvas3D.removeEventListener("touchcancel", this.boundOnTouchEnd3D)
 
     window.removeEventListener("keydown", this.boundOnKeyDown)
     window.removeEventListener("keyup", this.boundOnKeyUp)
@@ -405,14 +450,21 @@ export class BarracksSimulatorEngine {
   }
 
   private getVisibleCenterOffset() {
-    // Account for floating right inspector sidebar (~308px)
-    const rightInset = this.viewMode === "360" ? 0 : this.canvas2DDisplayWidth > 768 ? 308 : 0
+    const isMobile = this.canvas2DDisplayWidth < 768
+    const rightInset = this.viewMode === "360" || isMobile ? 0 : 308
+    const topInset = this.viewMode === "360" ? 0 : isMobile ? 54 : 0
+    const bottomInset = this.viewMode === "360" ? 0 : isMobile ? 84 : 0
     return {
       centerX: (this.canvas2DDisplayWidth - rightInset) / 2,
-      centerY: this.canvas2DDisplayHeight / 2,
-      availW: Math.max(120, this.canvas2DDisplayWidth - rightInset - 110),
-      availH: Math.max(120, this.canvas2DDisplayHeight - 100),
+      centerY: topInset + (this.canvas2DDisplayHeight - topInset - bottomInset) / 2,
+      availW: Math.max(120, this.canvas2DDisplayWidth - rightInset - (isMobile ? 48 : 110)),
+      availH: Math.max(120, this.canvas2DDisplayHeight - topInset - bottomInset - (isMobile ? 48 : 100)),
     }
+  }
+
+  set360VirtualMove(x: number, y: number) {
+    this.view360.virtualMove.x = Math.max(-1, Math.min(1, x))
+    this.view360.virtualMove.y = Math.max(-1, Math.min(1, y))
   }
 
   fit2DView() {
@@ -740,7 +792,17 @@ export class BarracksSimulatorEngine {
         return
       }
       if (document.pointerLockElement !== this.canvas3D) {
-        this.canvas3D.requestPointerLock?.()
+        const isCoarse = window.matchMedia?.("(pointer: coarse)").matches
+        if (!isCoarse && typeof this.canvas3D.requestPointerLock === "function") {
+          try {
+            const res = this.canvas3D.requestPointerLock() as unknown as Promise<void> | undefined
+            res?.catch?.(() => {})
+          } catch {
+            // Fallback to drag-look below
+          }
+        }
+        this.view360.mouseDragLooking = true
+        this.view360.lastMouseLook = { x: e.clientX, y: e.clientY }
       }
       return
     }
@@ -785,14 +847,16 @@ export class BarracksSimulatorEngine {
 
   private onMouseMove(e: MouseEvent) {
     if (this.viewMode === "360") {
-      if (!this.view360.isLooking) return
-      const dx = e.movementX || 0
-      const dy = e.movementY || 0
-      this.view360.yaw -= dx * this.view360.lookSensitivity
-      this.view360.pitch -= dy * this.view360.lookSensitivity
-      const maxPitch = Math.PI / 2 - 0.1
-      this.view360.pitch = Math.max(-maxPitch, Math.min(maxPitch, this.view360.pitch))
-      this.camera.rotation.set(this.view360.pitch, this.view360.yaw, 0, "YXZ")
+      if (this.view360.isLooking) {
+        const dx = e.movementX || 0
+        const dy = e.movementY || 0
+        this.apply360LookDelta(-dx * this.view360.lookSensitivity, -dy * this.view360.lookSensitivity)
+      } else if (this.view360.mouseDragLooking) {
+        const dx = e.clientX - this.view360.lastMouseLook.x
+        const dy = e.clientY - this.view360.lastMouseLook.y
+        this.view360.lastMouseLook = { x: e.clientX, y: e.clientY }
+        this.apply360LookDelta(dx * this.view360.lookSensitivity, dy * this.view360.lookSensitivity)
+      }
       return
     }
 
@@ -837,7 +901,10 @@ export class BarracksSimulatorEngine {
   }
 
   private onMouseUp() {
-    if (this.viewMode === "360") return
+    if (this.viewMode === "360") {
+      this.view360.mouseDragLooking = false
+      return
+    }
 
     if (this.isDragging && this.selectedFurniture) {
       this.constrainFurnitureToRoom(this.selectedFurniture)
@@ -869,6 +936,7 @@ export class BarracksSimulatorEngine {
       this.camera.updateProjectionMatrix()
     } else if (this.viewMode === "3d") {
       e.preventDefault()
+      this.controls.enableZoom = false
       this.start3DZoom(e.deltaY)
     }
   }
@@ -937,8 +1005,14 @@ export class BarracksSimulatorEngine {
     this.camera.rotation.set(0, 0, 0, "YXZ")
     this.view360.lastTime = performance.now()
 
-    if (document.pointerLockElement !== this.canvas3D) {
-      this.canvas3D.requestPointerLock?.()
+    const isCoarse = window.matchMedia?.("(pointer: coarse)").matches
+    if (!isCoarse && document.pointerLockElement !== this.canvas3D) {
+      try {
+        const res = this.canvas3D.requestPointerLock?.() as unknown as Promise<void> | undefined
+        res?.catch?.(() => {})
+      } catch {
+        // Ignore if browser disallows automatic pointer lock
+      }
     }
 
     this.animate360()
@@ -947,11 +1021,337 @@ export class BarracksSimulatorEngine {
   private exit360View() {
     this.view360.active = false
     this.view360.isLooking = false
+    this.view360.mouseDragLooking = false
+    this.view360.touchLookId = null
+    this.view360.pinchStartDist = null
     this.view360.keys = { forward: false, back: false, left: false, right: false }
+    this.view360.virtualMove = { x: 0, y: 0 }
     this.view360.fovAnim = null
 
     if (document.pointerLockElement === this.canvas3D) {
       document.exitPointerLock?.()
+    }
+  }
+
+  private apply360LookDelta(deltaYaw: number, deltaPitch: number) {
+    this.view360.yaw += deltaYaw
+    this.view360.pitch += deltaPitch
+    const maxPitch = Math.PI / 2 - 0.1
+    this.view360.pitch = Math.max(-maxPitch, Math.min(maxPitch, this.view360.pitch))
+    this.camera.rotation.set(this.view360.pitch, this.view360.yaw, 0, "YXZ")
+  }
+
+  private onTouchStart2D(e: TouchEvent) {
+    if (this.viewMode !== "2d") return
+    e.preventDefault()
+
+    const rect = this.canvas2D.getBoundingClientRect()
+
+    if (e.touches.length >= 2) {
+      // Transition to 2-finger pinch zoom
+      if (this.isDragging && this.selectedFurniture) {
+        this.constrainFurnitureToRoom(this.selectedFurniture)
+      }
+      this.isDragging = false
+      this.isPanning = false
+      this.touch2DMode = "pinch"
+      this.zoomAnimating = false
+
+      const t0 = e.touches[0]
+      const t1 = e.touches[1]
+      const x0 = t0.clientX - rect.left
+      const y0 = t0.clientY - rect.top
+      const x1 = t1.clientX - rect.left
+      const y1 = t1.clientY - rect.top
+
+      this.touch2DPinchStartDist = Math.max(1, Math.hypot(x1 - x0, y1 - y0))
+      this.touch2DPinchStartScale = this.scale
+      this.touch2DPinchMid = { x: (x0 + x1) / 2, y: (y0 + y1) / 2 }
+      this.touch2DPinchStartPan = { x: this.panOffset.x, y: this.panOffset.y }
+      return
+    }
+
+    if (e.touches.length === 1) {
+      const t = e.touches[0]
+      const x = t.clientX - rect.left
+      const y = t.clientY - rect.top
+
+      // Slight hit-padding for easier finger selection on small items
+      const hit = this.getFurnitureAt2D(x, y, 10)
+      if (hit) {
+        const now = performance.now()
+        const isDoubleTap =
+          this.lastTap2D.index === hit.index &&
+          now - this.lastTap2D.time < 300 &&
+          Math.hypot(x - this.lastTap2D.x, y - this.lastTap2D.y) < 28
+
+        this.selectFurniture(hit.index)
+
+        if (isDoubleTap) {
+          this.lastTap2D = { time: 0, x: 0, y: 0, index: -1 }
+          this.rotateSelected(90)
+          this.touch2DMode = "none"
+          return
+        }
+
+        this.lastTap2D = { time: now, x, y, index: hit.index }
+        this.touch2DMode = "drag"
+        this.isDragging = true
+        this.dragStart = { x, y }
+        this.dragFurnitureStart = {
+          x: hit.furniture.position.x,
+          z: hit.furniture.position.z,
+        }
+      } else {
+        this.lastTap2D = { time: 0, x: 0, y: 0, index: -1 }
+        this.deselectFurniture()
+        this.touch2DMode = "pan"
+        this.isPanning = true
+        this.panStart = { x, y }
+        this.panOffsetStart = { x: this.panOffset.x, y: this.panOffset.y }
+      }
+    }
+  }
+
+  private onTouchMove2D(e: TouchEvent) {
+    if (this.viewMode !== "2d") return
+    e.preventDefault()
+
+    const rect = this.canvas2D.getBoundingClientRect()
+
+    if (this.touch2DMode === "pinch" && e.touches.length >= 2) {
+      const t0 = e.touches[0]
+      const t1 = e.touches[1]
+      const x0 = t0.clientX - rect.left
+      const y0 = t0.clientY - rect.top
+      const x1 = t1.clientX - rect.left
+      const y1 = t1.clientY - rect.top
+
+      const dist = Math.max(1, Math.hypot(x1 - x0, y1 - y0))
+      const ratio = dist / this.touch2DPinchStartDist
+      const prevZoom = Math.round(this.scale)
+      const nextScale = Math.max(50, Math.min(350, this.touch2DPinchStartScale * ratio))
+      const scaleRatio = nextScale / this.touch2DPinchStartScale
+
+      const curMidX = (x0 + x1) / 2
+      const curMidY = (y0 + y1) / 2
+
+      // Keep world point under fingers anchored while pinching & panning
+      this.scale = nextScale
+      this.targetScale = nextScale
+      this.panOffset.x =
+        curMidX - (this.touch2DPinchMid.x - this.touch2DPinchStartPan.x) * scaleRatio
+      this.panOffset.y =
+        curMidY - (this.touch2DPinchMid.y - this.touch2DPinchStartPan.y) * scaleRatio
+
+      this.render2D()
+      if (Math.round(this.scale) !== prevZoom) {
+        this.emitState()
+      }
+      return
+    }
+
+    if (e.touches.length !== 1) return
+    const t = e.touches[0]
+    const x = t.clientX - rect.left
+    const y = t.clientY - rect.top
+
+    if (this.touch2DMode === "pan" && this.isPanning) {
+      this.panOffset.x = this.panOffsetStart.x + (x - this.panStart.x)
+      this.panOffset.y = this.panOffsetStart.y + (y - this.panStart.y)
+      this.render()
+      return
+    }
+
+    if (this.touch2DMode === "drag" && this.isDragging && this.selectedFurniture) {
+      const dx = (x - this.dragStart.x) / this.scale
+      const dy = (y - this.dragStart.y) / this.scale
+
+      let newX = this.dragFurnitureStart.x + dx
+      let newZ = this.dragFurnitureStart.z + dy
+
+      if (this.options.snapToGrid) {
+        const snapped = this.computeSnappedCoords(this.selectedFurniture, newX, newZ)
+        newX = snapped.x
+        newZ = snapped.z
+      }
+
+      this.selectedFurniture.position.x = newX
+      this.selectedFurniture.position.z = newZ
+
+      if (this.options.collisionDetection) {
+        this.checkCollisions()
+      }
+
+      this.render()
+      this.emitState()
+      this.notifyLayoutChange()
+    }
+  }
+
+  private onTouchEnd2D(e: TouchEvent) {
+    if (this.viewMode !== "2d") return
+
+    if (this.touch2DMode === "drag" && this.isDragging && this.selectedFurniture) {
+      this.constrainFurnitureToRoom(this.selectedFurniture)
+      if (this.options.collisionDetection) {
+        this.checkCollisions()
+      }
+      this.emitState()
+      this.notifyLayoutChange()
+    }
+
+    if (e.touches.length === 0) {
+      this.touch2DMode = "none"
+      this.isDragging = false
+      this.isPanning = false
+      this.render()
+    } else if (this.touch2DMode === "pinch" && e.touches.length === 1) {
+      // Smoothly downgrade pinch to pan when lifting one finger
+      const rect = this.canvas2D.getBoundingClientRect()
+      const t = e.touches[0]
+      this.touch2DMode = "pan"
+      this.isPanning = true
+      this.panStart = { x: t.clientX - rect.left, y: t.clientY - rect.top }
+      this.panOffsetStart = { x: this.panOffset.x, y: this.panOffset.y }
+    }
+  }
+
+  private onTouchStart3D(e: TouchEvent) {
+    if (this.viewMode === "3d") {
+      // Enable native OrbitControls pinch zoom for touchscreens
+      this.controls.enableZoom = true
+      this.zoom3DTargetDistance = null
+
+      if (e.touches.length === 1) {
+        const t = e.touches[0]
+        this.touch3DTapStart = { time: performance.now(), x: t.clientX, y: t.clientY }
+      } else {
+        this.touch3DTapStart = null
+      }
+      return
+    }
+
+    if (this.viewMode !== "360") return
+    e.preventDefault()
+
+    // Use targetTouches so simultaneous touch on the virtual joystick does not interfere
+    const touches = e.targetTouches
+    if (touches.length >= 2) {
+      this.view360.touchLookId = null
+      this.view360.pinchStartDist = Math.max(
+        1,
+        Math.hypot(
+          touches[1].clientX - touches[0].clientX,
+          touches[1].clientY - touches[0].clientY
+        )
+      )
+      this.view360.pinchStartFov = this.camera.fov
+      return
+    }
+
+    if (touches.length === 1) {
+      const t = touches[0]
+      this.view360.touchLookId = t.identifier
+      this.view360.lastTouchLook = { x: t.clientX, y: t.clientY }
+    }
+  }
+
+  private onTouchMove3D(e: TouchEvent) {
+    if (this.viewMode === "3d") {
+      if (this.touch3DTapStart && e.touches.length === 1) {
+        const t = e.touches[0]
+        if (Math.hypot(t.clientX - this.touch3DTapStart.x, t.clientY - this.touch3DTapStart.y) > 10) {
+          this.touch3DTapStart = null
+        }
+      }
+      return
+    }
+
+    if (this.viewMode !== "360") return
+    e.preventDefault()
+
+    const touches = e.targetTouches
+    if (touches.length >= 2 && this.view360.pinchStartDist !== null) {
+      const dist = Math.max(
+        1,
+        Math.hypot(
+          touches[1].clientX - touches[0].clientX,
+          touches[1].clientY - touches[0].clientY
+        )
+      )
+      const ratio = this.view360.pinchStartDist / dist
+      const nextFov = Math.max(
+        this.view360.minFov,
+        Math.min(this.view360.maxFov, this.view360.pinchStartFov * ratio)
+      )
+      this.camera.fov = nextFov
+      this.camera.updateProjectionMatrix()
+      return
+    }
+
+    if (this.view360.touchLookId !== null) {
+      for (let i = 0; i < touches.length; i++) {
+        const t = touches[i]
+        if (t.identifier === this.view360.touchLookId) {
+          const dx = t.clientX - this.view360.lastTouchLook.x
+          const dy = t.clientY - this.view360.lastTouchLook.y
+          this.view360.lastTouchLook = { x: t.clientX, y: t.clientY }
+          this.apply360LookDelta(
+            dx * this.view360.touchLookSensitivity,
+            dy * this.view360.touchLookSensitivity
+          )
+          break
+        }
+      }
+    }
+  }
+
+  private onTouchEnd3D(e: TouchEvent) {
+    if (this.viewMode === "3d") {
+      if (this.touch3DTapStart && e.changedTouches.length === 1 && e.touches.length === 0) {
+        const t = e.changedTouches[0]
+        const elapsed = performance.now() - this.touch3DTapStart.time
+        const moved = Math.hypot(t.clientX - this.touch3DTapStart.x, t.clientY - this.touch3DTapStart.y)
+        if (elapsed < 300 && moved < 10) {
+          const rect = this.canvas3D.getBoundingClientRect()
+          const x = t.clientX - rect.left
+          const y = t.clientY - rect.top
+          this.mouse.x = (x / rect.width) * 2 - 1
+          this.mouse.y = -(y / rect.height) * 2 + 1
+          this.raycaster.setFromCamera(this.mouse, this.camera)
+          const intersects = this.raycaster.intersectObjects(this.furniture, true)
+          if (intersects.length > 0) {
+            let obj: THREE.Object3D | null = intersects[0].object
+            while (obj && obj.parent && !this.furniture.includes(obj as FurnitureGroup)) {
+              obj = obj.parent
+            }
+            const index = this.furniture.indexOf(obj as FurnitureGroup)
+            if (index !== -1) {
+              this.selectFurniture(index)
+              this.touch3DTapStart = null
+              return
+            }
+          }
+          this.deselectFurniture()
+        }
+      }
+      this.touch3DTapStart = null
+      return
+    }
+
+    if (this.viewMode !== "360") return
+
+    const touches = e.targetTouches
+    if (touches.length < 2) {
+      this.view360.pinchStartDist = null
+    }
+    if (touches.length === 1) {
+      const t = touches[0]
+      this.view360.touchLookId = t.identifier
+      this.view360.lastTouchLook = { x: t.clientX, y: t.clientY }
+    } else if (touches.length === 0) {
+      this.view360.touchLookId = null
     }
   }
 
@@ -1083,9 +1483,10 @@ export class BarracksSimulatorEngine {
     }
   }
 
-  private getFurnitureAt2D(x: number, y: number) {
+  private getFurnitureAt2D(x: number, y: number, extraPaddingPx = 0) {
     const worldX = (x - this.panOffset.x) / this.scale
     const worldZ = (y - this.panOffset.y) / this.scale
+    const padMeters = extraPaddingPx / this.scale
 
     for (let i = this.furniture.length - 1; i >= 0; i--) {
       const furniture = this.furniture[i]
@@ -1099,7 +1500,10 @@ export class BarracksSimulatorEngine {
       const localX = (worldX - pos.x) * cos - (worldZ - pos.z) * sin
       const localZ = (worldX - pos.x) * sin + (worldZ - pos.z) * cos
 
-      if (Math.abs(localX) <= config.width / 2 && Math.abs(localZ) <= config.depth / 2) {
+      if (
+        Math.abs(localX) <= config.width / 2 + padMeters &&
+        Math.abs(localZ) <= config.depth / 2 + padMeters
+      ) {
         return { furniture, index: i }
       }
     }
@@ -1428,13 +1832,24 @@ export class BarracksSimulatorEngine {
       .crossVectors(forward, new THREE.Vector3(0, 1, 0))
       .normalize()
 
-    if (this.view360.keys.forward) move.add(forward)
-    if (this.view360.keys.back) move.sub(forward)
-    if (this.view360.keys.right) move.add(right)
-    if (this.view360.keys.left) move.sub(right)
+    let inputForward = 0
+    let inputRight = 0
+    if (this.view360.keys.forward) inputForward += 1
+    if (this.view360.keys.back) inputForward -= 1
+    if (this.view360.keys.right) inputRight += 1
+    if (this.view360.keys.left) inputRight -= 1
 
-    if (move.lengthSq() > 0) {
-      move.normalize().multiplyScalar(this.view360.moveSpeed * dt)
+    inputForward += this.view360.virtualMove.y
+    inputRight += this.view360.virtualMove.x
+
+    const inputMag = Math.hypot(inputForward, inputRight)
+    if (inputMag > 0.01) {
+      const clampedMag = Math.min(1, inputMag)
+      move
+        .addScaledVector(forward, inputForward / inputMag)
+        .addScaledVector(right, inputRight / inputMag)
+        .multiplyScalar(this.view360.moveSpeed * clampedMag * dt)
+
       const prev = this.camera.position.clone()
       const next = prev.clone().add(move)
       const constrained = this.room3D.constrainToWalkableArea(
