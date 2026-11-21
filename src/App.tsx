@@ -3,7 +3,6 @@ import { useTheme } from "next-themes"
 import { toast } from "sonner"
 import {
   AlertTriangle,
-  Compass,
   LogOut,
   Maximize2,
   ZoomIn,
@@ -11,7 +10,6 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { InspectorSidebar } from "@/components/InspectorSidebar"
@@ -245,37 +243,27 @@ export default function App() {
         </div>
       )}
 
-      {/* 360° Mode Floating Liquid Glass HUD */}
+      {/* 360° Mode Compact Floating Guide Pill */}
       {is360 && (
-        <Card
-          size="sm"
-          className="liquid-glass-panel fixed top-4 left-4 z-20 w-72 rounded-2xl border-0 ring-0"
-        >
-          <CardContent className="relative z-10 flex flex-col gap-2.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 font-semibold">
-                <Compass className="size-4 text-primary" />
-                <span>360° First-Person View</span>
-              </div>
-              <Badge variant="secondary" className="bg-foreground/12 text-[10px]">
-                WASD
-              </Badge>
-            </div>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              Click the room to look around · WASD / Arrows to walk · Scroll to zoom FOV · Press
-              Esc to exit.
-            </p>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => engineRef.current?.setViewMode("3d")}
-              className="w-full bg-foreground/12 hover:bg-foreground/18"
-            >
-              <LogOut className="size-3.5" />
-              Exit 360° View
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="liquid-glass-pill fixed top-3 left-3 z-20 flex items-center gap-2.5 rounded-full py-1 pr-1.5 pl-3 text-xs text-muted-foreground">
+          <span>
+            <strong className="font-medium text-foreground">WASD</strong> Move
+          </span>
+          <span>·</span>
+          <span>
+            <strong className="font-medium text-foreground">Scroll</strong> Zoom
+          </span>
+          <Separator orientation="vertical" className="h-3.5 self-center bg-foreground/15" />
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => engineRef.current?.setViewMode("3d")}
+            className="rounded-full px-2.5 hover:bg-foreground/12"
+          >
+            <LogOut className="size-3" />
+            Exit (Esc)
+          </Button>
+        </div>
       )}
 
       {/* Single-Container Floating Liquid Glass Right Inspector */}
