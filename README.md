@@ -1,6 +1,6 @@
 # Barracks Layout Simulator
 
-A web application for simulating furniture layouts in USAG Humphreys military barracks. Built with React, TypeScript, **shadcn/ui**, Tailwind CSS, and Three.js, supporting 2D, 3D, and 360° first-person walkthrough views using the existing room furniture set.
+A web application for simulating furniture layouts in military barracks. Built with React, TypeScript, **shadcn/ui**, Tailwind CSS, and Three.js, supporting 2D, 3D, and 360° first-person walkthrough views using the existing room furniture set.
 
 ## Key Features
 
