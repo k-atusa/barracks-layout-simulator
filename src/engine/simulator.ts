@@ -8,7 +8,7 @@ import {
   type FurnitureType,
 } from "./furniture"
 import { Room, draw2DRoom, type HighlightLines } from "./room"
-import { AutoArranger, CollisionDetector } from "./collision"
+import { CollisionDetector, RandomLayoutGenerator } from "./collision"
 
 export type ViewMode = "2d" | "3d" | "360"
 
@@ -609,17 +609,23 @@ export class BarracksSimulatorEngine {
     return true
   }
 
-  autoArrange() {
-    if (this.furniture.length === 0) return
+  randomizeLayout(): boolean {
+    if (this.furniture.length === 0) return false
 
-    const arranger = new AutoArranger(this.room3D.getFloorBounds(), this.collisionDetector)
-    const positions = arranger.arrangeBarracksStyle(this.furniture)
+    const generator = new RandomLayoutGenerator({
+      width: this.roomWidth,
+      depth: this.roomDepth,
+      partitionDepth: this.room3D.partitionDepth,
+      partitionX: this.room3D.partitionX,
+    })
+
+    const positions = generator.generate(this.furniture)
+    if (!positions) return false
 
     positions.forEach((pos) => {
       pos.furniture.position.x = pos.x
       pos.furniture.position.z = pos.z
       pos.furniture.rotation.y = pos.rotation
-      this.constrainFurnitureToRoom(pos.furniture)
     })
 
     if (this.options.collisionDetection) {
@@ -629,6 +635,7 @@ export class BarracksSimulatorEngine {
     this.render()
     this.emitState()
     this.notifyLayoutChange()
+    return true
   }
 
   optimizeSpace() {
@@ -1148,16 +1155,16 @@ export class BarracksSimulatorEngine {
     collisions.forEach(([i, j]) => {
       this.furniture[i].userData.isColliding = true
       this.furniture[j].userData.isColliding = true
-      ;[this.furniture[i], this.furniture[j]].forEach((f) => {
-        f.traverse((child) => {
-          if (!(child instanceof THREE.Mesh) || child.name === "outline" || !child.material) return
-          const materials = Array.isArray(child.material) ? child.material : [child.material]
-          materials.forEach((mat) => {
-            if (!("color" in mat) || !(mat.color instanceof THREE.Color)) return
-            mat.color.setHex(0xdc2626)
+        ;[this.furniture[i], this.furniture[j]].forEach((f) => {
+          f.traverse((child) => {
+            if (!(child instanceof THREE.Mesh) || child.name === "outline" || !child.material) return
+            const materials = Array.isArray(child.material) ? child.material : [child.material]
+            materials.forEach((mat) => {
+              if (!("color" in mat) || !(mat.color instanceof THREE.Color)) return
+              mat.color.setHex(0xdc2626)
+            })
           })
         })
-      })
     })
   }
 

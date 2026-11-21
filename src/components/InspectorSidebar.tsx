@@ -10,9 +10,9 @@ import {
   RotateCcw,
   RotateCw,
   Ruler,
+  Shuffle,
   Sparkles,
   Sun,
-  Wand2,
   X,
 } from "lucide-react"
 import {
@@ -53,7 +53,7 @@ interface InspectorSidebarProps {
   onRotateDelta: (delta: number) => void
   onToggleOption: <K extends keyof SimulatorOptions>(key: K, value: SimulatorOptions[K]) => void
   onApplyRoomSize: (width: number, depth: number, height: number) => void
-  onAutoArrange: () => void
+  onRandomLayout: () => void
   onOptimizeSpace: () => void
   onCopyShareUrl: () => Promise<boolean>
   onResetLayout: () => void
@@ -70,7 +70,7 @@ export function InspectorSidebar({
   onRotateDelta,
   onToggleOption,
   onApplyRoomSize,
-  onAutoArrange,
+  onRandomLayout,
   onOptimizeSpace,
   onCopyShareUrl,
   onResetLayout,
@@ -353,9 +353,9 @@ export function InspectorSidebar({
               Layout Actions
             </h2>
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="default" size="sm" onClick={onAutoArrange}>
-                <Wand2 className="size-3.5" />
-                Auto Arrange
+              <Button variant="default" size="sm" onClick={onRandomLayout}>
+                <Shuffle className="size-3.5" />
+                Random
               </Button>
               <Button
                 variant="secondary"

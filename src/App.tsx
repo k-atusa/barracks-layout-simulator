@@ -130,9 +130,13 @@ export default function App() {
     }
   }
 
-  const handleAutoArrange = () => {
-    engineRef.current?.autoArrange()
-    toast.success("Applied barracks auto-arrangement.")
+  const handleRandomLayout = () => {
+    const ok = engineRef.current?.randomizeLayout()
+    if (ok) {
+      toast.success("Generated a new random layout.")
+    } else {
+      toast.error("Could not fit all furniture without overlap in the current room size.")
+    }
   }
 
   const handleOptimizeSpace = () => {
@@ -281,7 +285,7 @@ export default function App() {
             engineRef.current?.setOption(key, val)
           }
           onApplyRoomSize={handleApplyRoomSize}
-          onAutoArrange={handleAutoArrange}
+          onRandomLayout={handleRandomLayout}
           onOptimizeSpace={handleOptimizeSpace}
           onCopyShareUrl={handleCopyShareUrl}
           onResetLayout={handleResetLayout}

@@ -166,168 +166,219 @@ export class CollisionDetector {
   }
 }
 
-export class AutoArranger {
-  roomBounds: FloorBounds
-  collisionDetector: CollisionDetector
+export interface UsableRoomGeometry {
+  width: number
+  depth: number
+  partitionDepth: number
+  partitionX: number
+}
 
-  constructor(roomBounds: FloorBounds, collisionDetector: CollisionDetector) {
-    this.roomBounds = roomBounds
-    this.collisionDetector = collisionDetector
+export class RandomLayoutGenerator {
+  private room: UsableRoomGeometry
+
+  constructor(room: UsableRoomGeometry) {
+    this.room = room
   }
 
-  arrangeBarracksStyle(furniture: FurnitureGroup[]): ArrangedPosition[] {
-    const beds = furniture.filter(
-      (f) => f.userData.type === "single-bed" || f.userData.type === "bunk-bed"
-    )
-    const desks = furniture.filter((f) => f.userData.type === "desk")
-    const chairs = furniture.filter((f) => f.userData.type === "chair")
-    const lockers = furniture.filter((f) => f.userData.type === "locker")
-    const dressers = furniture.filter(
-      (f) => f.userData.type === "dresser" || f.userData.type === "dresser-5"
-    )
-    const bedsideChests = furniture.filter(
-      (f) => f.userData.type === "bed-drawer-2" || f.userData.type === "nightstand"
-    )
-    const footlockers = furniture.filter((f) => f.userData.type === "footlocker")
+  generate(furniture: FurnitureGroup[]): ArrangedPosition[] | null {
+    if (furniture.length === 0) return []
 
-    const assigned = new Set<FurnitureGroup>([
-      ...beds,
-      ...desks,
-      ...chairs,
-      ...lockers,
-      ...dressers,
-      ...bedsideChests,
-      ...footlockers,
-    ])
-    const others = furniture.filter((f) => !assigned.has(f))
+    // Place larger furniture first for higher placement success
+    const sorted = [...furniture].sort((a, b) => {
+      const areaA = a.userData.config.width * a.userData.config.depth
+      const areaB = b.userData.config.width * b.userData.config.depth
+      if (Math.abs(areaA - areaB) < 0.05) return Math.random() - 0.5
+      return areaB - areaA
+    })
 
-    const positions: ArrangedPosition[] = []
-    const placedBounds: Bounds2D[] = []
+    const maxAttempts = 40
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // Slightly relax spacing on later attempts if room is tight
+      const clearance = attempt < 25 ? 0.04 : 0.005
+      const placed: ArrangedPosition[] = []
+      const placedBounds: Bounds2D[] = []
+      let allPlaced = true
 
-    const pushPos = (item: FurnitureGroup, x: number, z: number, rotation: number) => {
-      positions.push({ furniture: item, x, z, rotation })
-      const config = item.userData.config
-      const cos = Math.abs(Math.cos(rotation))
-      const sin = Math.abs(Math.sin(rotation))
-      const w = config.width * cos + config.depth * sin
-      const d = config.width * sin + config.depth * cos
-      placedBounds.push({
-        minX: x - w / 2,
-        maxX: x + w / 2,
-        minZ: z - d / 2,
-        maxZ: z + d / 2,
-      })
+      for (const item of sorted) {
+        const spot = this.findRandomSpot(item, placedBounds, clearance)
+        if (!spot) {
+          allPlaced = false
+          break
+        }
+        placed.push(spot.pos)
+        placedBounds.push(spot.bounds)
+      }
+
+      if (allPlaced) {
+        return placed
+      }
     }
 
-    // Beds along the left wall
-    let currentZ = this.roomBounds.minZ + 1.15
-    beds.forEach((bed) => {
-      const config = bed.userData.config
-      pushPos(bed, this.roomBounds.minX + config.width / 2 + 0.05, currentZ, 0)
-      currentZ += config.depth + 0.25
-    })
+    return null
+  }
 
-    // Bedside chests next to beds
-    bedsideChests.forEach((chest, index) => {
-      const config = chest.userData.config
-      if (index < beds.length) {
-        const bedPos = positions.find((p) => p.furniture === beds[index])
-        if (bedPos) {
-          const bedConfig = beds[index].userData.config
-          pushPos(
-            chest,
-            bedPos.x + bedConfig.width / 2 + config.width / 2 + 0.08,
-            bedPos.z - bedConfig.depth / 2 + config.depth / 2,
-            0
-          )
-          return
+  private findRandomSpot(
+    item: FurnitureGroup,
+    placedBounds: Bounds2D[],
+    clearance: number
+  ): { pos: ArrangedPosition; bounds: Bounds2D } | null {
+    const config = item.userData.config
+    const rotations = this.shuffle([0, Math.PI / 2, Math.PI, -Math.PI / 2])
+    const minX = -this.room.width / 2
+    const maxX = this.room.width / 2
+    const minZ = -this.room.depth / 2
+    const maxZ = this.room.depth / 2
+    const partZ = maxZ - this.room.partitionDepth
+    const wallMargin = 0.03
+
+    // Phase 1: Random sampling (mix of wall-aligned and free-space positions)
+    for (let i = 0; i < 90; i++) {
+      const rot = rotations[i % rotations.length]
+      const isRotated = Math.abs(Math.sin(rot)) > 0.5
+      const effW = isRotated ? config.depth : config.width
+      const effD = isRotated ? config.width : config.depth
+
+      const validMinX = minX + effW / 2
+      const validMaxX = maxX - effW / 2
+      const validMinZ = minZ + effD / 2
+      const validMaxZ = maxZ - effD / 2
+      if (validMinX > validMaxX || validMinZ > validMaxZ) continue
+
+      let x: number
+      let z: number
+
+      if (i < 60) {
+        // Biased toward placing along one of the usable walls for cleaner layouts
+        const wall = Math.floor(Math.random() * 4)
+        if (wall === 0) {
+          // Back wall (-Z)
+          x = this.randomRange(validMinX, validMaxX)
+          z = validMinZ + wallMargin
+        } else if (wall === 1) {
+          // Left wall (-X)
+          x = validMinX + wallMargin
+          z = this.randomRange(validMinZ, validMaxZ)
+        } else if (wall === 2) {
+          // Right wall (+X, main room portion)
+          const maxRightZ = partZ - effD / 2
+          if (validMinZ > maxRightZ) continue
+          x = validMaxX - wallMargin
+          z = this.randomRange(validMinZ, maxRightZ)
+        } else {
+          // Horizontal partition wall (facing main room)
+          const maxMainZ = partZ - effD / 2 - wallMargin
+          if (validMinZ > maxMainZ) continue
+          x = this.randomRange(validMinX, validMaxX)
+          z = maxMainZ
+        }
+      } else {
+        // Uniform random anywhere in the room
+        x = this.randomRange(validMinX, validMaxX)
+        z = this.randomRange(validMinZ, validMaxZ)
+      }
+
+      // Snap to 5cm increments for tidy alignment
+      x = Math.round(x * 20) / 20
+      z = Math.round(z * 20) / 20
+
+      const bounds = this.makeBounds(x, z, effW, effD)
+      if (this.isInsideUsableArea(bounds) && !this.overlapsAny(bounds, placedBounds, clearance)) {
+        return {
+          pos: { furniture: item, x, z, rotation: rot },
+          bounds,
         }
       }
-      const opt = this.collisionDetector.findOptimalPosition(config, this.roomBounds, placedBounds)
-      if (opt) pushPos(chest, opt.x, opt.z, 0)
-    })
+    }
 
-    // Desks along the right/back wall
-    let currentX = this.roomBounds.maxX - 0.65
-    desks.forEach((desk) => {
-      const config = desk.userData.config
-      pushPos(
-        desk,
-        Math.min(this.roomBounds.maxX - config.width / 2 - 0.05, currentX),
-        this.roomBounds.minZ + config.depth / 2 + 0.05,
-        0
-      )
-      currentX -= config.width + 0.2
-    })
+    // Phase 2: Randomized grid sweep fallback to guarantee finding any valid gap
+    const step = 0.1
+    for (const rot of rotations) {
+      const isRotated = Math.abs(Math.sin(rot)) > 0.5
+      const effW = isRotated ? config.depth : config.width
+      const effD = isRotated ? config.width : config.depth
 
-    // Chairs in front of desks
-    chairs.forEach((chair, index) => {
-      if (index < desks.length) {
-        const deskPos = positions.find((p) => p.furniture === desks[index])
-        if (deskPos) {
-          pushPos(chair, deskPos.x, deskPos.z + 0.62, Math.PI)
-          return
+      const xs: number[] = []
+      for (let x = minX + effW / 2; x <= maxX - effW / 2 + 0.001; x += step) {
+        xs.push(Math.round(x * 100) / 100)
+      }
+      const zs: number[] = []
+      for (let z = minZ + effD / 2; z <= maxZ - effD / 2 + 0.001; z += step) {
+        zs.push(Math.round(z * 100) / 100)
+      }
+
+      for (const x of this.shuffle(xs)) {
+        for (const z of this.shuffle(zs)) {
+          const bounds = this.makeBounds(x, z, effW, effD)
+          if (
+            this.isInsideUsableArea(bounds) &&
+            !this.overlapsAny(bounds, placedBounds, clearance)
+          ) {
+            return {
+              pos: { furniture: item, x, z, rotation: rot },
+              bounds,
+            }
+          }
         }
       }
-      const opt = this.collisionDetector.findOptimalPosition(
-        chair.userData.config,
-        this.roomBounds,
-        placedBounds
-      )
-      if (opt) pushPos(chair, opt.x, opt.z, 0)
-    })
+    }
 
-    // Dressers along the right wall
-    let dresserZ = this.roomBounds.minZ + 1.55
-    dressers.forEach((dresser) => {
-      const config = dresser.userData.config
-      pushPos(
-        dresser,
-        this.roomBounds.maxX - config.depth / 2 - 0.05,
-        Math.min(this.roomBounds.maxZ - config.width / 2 - 0.05, dresserZ),
-        -Math.PI / 2
-      )
-      dresserZ += config.width + 0.2
-    })
+    return null
+  }
 
-    // Lockers along the right wall
-    let lockerZ = this.roomBounds.minZ + 0.5
-    lockers.forEach((locker) => {
-      const config = locker.userData.config
-      pushPos(locker, this.roomBounds.maxX - config.width / 2 - 0.05, lockerZ, Math.PI)
-      lockerZ += config.depth + 0.2
-    })
+  private makeBounds(x: number, z: number, width: number, depth: number): Bounds2D {
+    return {
+      minX: x - width / 2,
+      maxX: x + width / 2,
+      minZ: z - depth / 2,
+      maxZ: z + depth / 2,
+      width,
+      depth,
+    }
+  }
 
-    // Footlockers at the foot of beds
-    footlockers.forEach((footlocker, index) => {
-      if (index < beds.length) {
-        const bedPos = positions.find((p) => p.furniture === beds[index])
-        if (bedPos) {
-          const bedConfig = beds[index].userData.config
-          pushPos(footlocker, bedPos.x, bedPos.z + bedConfig.depth / 2 + 0.3, 0)
-          return
-        }
-      }
-      const opt = this.collisionDetector.findOptimalPosition(
-        footlocker.userData.config,
-        this.roomBounds,
-        placedBounds
-      )
-      if (opt) pushPos(footlocker, opt.x, opt.z, 0)
-    })
+  private isInsideUsableArea(b: Bounds2D): boolean {
+    const eps = 0.001
+    const minX = -this.room.width / 2
+    const maxX = this.room.width / 2
+    const minZ = -this.room.depth / 2
+    const maxZ = this.room.depth / 2
+    const partZ = maxZ - this.room.partitionDepth
 
-    // Place remaining items in available space
-    others.forEach((item) => {
-      const opt = this.collisionDetector.findOptimalPosition(
-        item.userData.config,
-        this.roomBounds,
-        placedBounds
-      )
-      if (opt) {
-        pushPos(item, opt.x, opt.z, 0)
-      }
-    })
+    if (b.minX < minX - eps || b.maxX > maxX + eps || b.minZ < minZ - eps || b.maxZ > maxZ + eps) {
+      return false
+    }
 
-    return positions
+    // Exclude bottom-right dressing room area
+    if (b.maxX > this.room.partitionX + eps && b.maxZ > partZ + eps) {
+      return false
+    }
+
+    return true
+  }
+
+  private overlapsAny(candidate: Bounds2D, existing: Bounds2D[], clearance: number): boolean {
+    for (const other of existing) {
+      const separated =
+        candidate.maxX + clearance <= other.minX ||
+        candidate.minX >= other.maxX + clearance ||
+        candidate.maxZ + clearance <= other.minZ ||
+        candidate.minZ >= other.maxZ + clearance
+      if (!separated) return true
+    }
+    return false
+  }
+
+  private randomRange(min: number, max: number): number {
+    if (max <= min) return min
+    return min + Math.random() * (max - min)
+  }
+
+  private shuffle<T>(arr: T[]): T[] {
+    const copy = [...arr]
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[copy[i], copy[j]] = [copy[j], copy[i]]
+    }
+    return copy
   }
 }

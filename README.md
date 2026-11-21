@@ -23,7 +23,7 @@ Arrange the 6 standard barracks furniture pieces already provided in the room:
 - **Rotate**: `R` / `Shift+R`, double-click, `-90°` / `+90°` buttons, or rotation slider
 - **Grid Snap & Collision Detection**: Snap to 10cm grid and highlight overlapping furniture
 - **Room Settings**: Customize room width, depth, and height
-- **Auto Arrange & Optimize**: Automatically apply barracks layout or align pieces to walls
+- **Random Layout & Optimize**: Generate non-overlapping random layouts or align pieces to walls
 - **URL Sharing & Reset**: Automatically syncs room and furniture positions into the URL so sharing a link restores the exact layout, or reset to the default layout
 - **Dark & Light Theme**: Built on shadcn/ui neutral design tokens
 
