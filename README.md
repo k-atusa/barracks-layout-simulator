@@ -1,95 +1,74 @@
-# 🏠 Barracks Layout Simulator
+# Barracks Layout Simulator
 
-A web application for simulating furniture layouts in military barracks. Built with Three.js and supports 2D/3D view switching to help find space-efficient layouts.
+A web application for simulating furniture layouts in USAG Humphreys military barracks. Built with React, TypeScript, **shadcn/ui**, Tailwind CSS, and Three.js, supporting 2D, 3D, and 360° first-person walkthrough views using the existing room furniture set.
 
-## ✨ Key Features
+## Key Features
 
-### 🎨 View Modes
-- **2D View**: Plan view for quick layout editing
-- **3D View**: Immersive view with OrbitControls camera
+### View Modes
+- **2D View**: Top-down floor plan with grid snapping, edge alignment highlights, zoom/pan, and dimension guides
+- **3D View**: Interactive 3D perspective with OrbitControls camera and raycast furniture selection
+- **360° View**: First-person walkthrough mode with pointer lock, WASD movement, wall collision constraints, and FOV zoom
 
-### 🪑 Supported Furniture
-- Single bed / bunk bed
-- Desk / chair
-- Dresser / locker / footlocker
-- Nightstand / trash bin
+### Existing Furniture Layout (No Catalog)
+Arrange the 6 standard barracks furniture pieces already provided in the room:
+- Single Bed (`1.0 × 2.15m`)
+- Desk (`1.06 × 0.6m`)
+- 5-Drawer Dresser (`0.76 × 0.6m`)
+- 2-Drawer Bedside Chest (`0.5 × 0.5m`)
+- Chair (`0.45 × 0.45m`)
+- Trash Bin (`0.3 × 0.3m`)
 
-### 🔧 Functionality
-- **Drag & Drop**: Drag furniture from the left panel onto the canvas
-- **Rotate**: Rotate with the R key or double-click
-- **Grid Snap**: Align furniture neatly on the grid
-- **Collision Detection**: Highlights overlapping furniture
-- **Room Size**: Adjust room dimensions
-- **Save/Load**: Export and import layouts as JSON
-- **Auto Arrange**: Standard barracks arrangement
-- **Space Optimization**: Align to walls and snap rotations
+### Functionality
+- **Direct Manipulation**: Drag to move in 2D, select from the canvas or the Properties sidebar list
+- **Rotate**: `R` / `Shift+R`, double-click, `-90°` / `+90°` buttons, or rotation slider
+- **Grid Snap & Collision Detection**: Snap to 10cm grid and highlight overlapping furniture
+- **Room Settings**: Customize room width, depth, and height
+- **Auto Arrange & Optimize**: Automatically apply barracks layout or align pieces to walls
+- **Save / Load / Reset**: Export/import JSON layouts or restore the default layout
+- **Dark & Light Theme**: Built on shadcn/ui neutral design tokens
 
-## 🚀 How to Run
-
-### Local Server
+## How to Run
 
 ```bash
-# Python 3
-python3 -m http.server 8080
-
-# Node.js (npx)
-npx serve .
-
-# PHP
-php -S localhost:8080
+npm install
+npm run dev
 ```
 
-Open `http://localhost:8080` in your browser.
+Build for production:
 
-### VS Code Live Server
-You can also run it using the Live Server extension.
+```bash
+npm run build
+npm run preview
+```
 
-## 🎮 Controls
+## Controls
 
 ### 2D Mode
-- **Add furniture**: Drag from the left panel to the canvas
-- **Move**: Click and drag furniture
-- **Rotate**: R key or double-click
-- **Delete**: Delete or Backspace
-- **Zoom**: Mouse wheel
+- **Select / Move**: Click and drag furniture (or select from the Properties panel)
+- **Pan**: Drag empty space
+- **Rotate**: `R` (`+15°`), `Shift+R` (`-15°`), or double-click (`+90°`)
+- **Nudge**: Arrow keys
+- **Zoom**: Mouse wheel or floating zoom toolbar
 
 ### 3D Mode
+- **Select**: Click furniture
 - **Orbit**: Mouse drag
 - **Zoom**: Mouse wheel
 - **Pan**: Right mouse drag
 
-## 🛠 Tech Stack
+### 360° Mode
+- **Look**: Click canvas and move mouse
+- **Walk**: `WASD` or Arrow keys
+- **FOV Zoom**: Mouse wheel (middle-click to reset)
+- **Exit**: `Esc` or Exit button
 
-- **Three.js** — 3D rendering
-- **Vanilla JavaScript** — main logic (ES modules)
-- **CSS3** — styling and responsive layout
-- **HTML5 Canvas** — 2D rendering
+## Tech Stack
 
-## 📁 Project Structure
+- **React 19 + TypeScript + Vite**
+- **shadcn/ui** (`@base-ui/react`, `lucide-react`, `sonner`, `next-themes`) + **Tailwind CSS v4**
+- **Three.js** — 3D and 360° rendering
+- **HTML5 Canvas** — 2D floor plan rendering
 
-```
-barracks-layout-simulator/
-├── index.html          # Main HTML file
-├── css/
-│   └── style.css       # Styles
-├── js/
-│   ├── app.js          # App logic
-│   ├── furniture.js    # Furniture definitions & mesh creation
-│   ├── room.js         # Room creation & management
-│   └── collision.js    # Collision detection & auto-arrange
-├── README.md
-└── LICENSE
-```
-
-## 📋 Roadmap
-
-- [ ] Furniture resizing
-- [ ] More furniture types
-- [ ] Multi-room support
-- [ ] Export image snapshots
-- [ ] Layout sharing
-- [ ] Improved mobile touch support
-
-## 📄 License
+## License
 
 MIT License
