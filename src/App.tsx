@@ -356,8 +356,15 @@ export default function App() {
       )}
 
       {/* Mobile Selected Furniture Quick-Action Pill */}
-      {!is360 && !mobileSheetOpen && selectedFurniture && (
-        <div className="liquid-glass-pill fixed bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+3.75rem)] left-1/2 z-20 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-1 rounded-full py-1 pr-1.5 pl-3 md:hidden">
+      {!is360 && selectedFurniture && (
+        <div
+          className={[
+            "liquid-glass-pill fixed bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+3.75rem)] left-1/2 z-20 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-1 rounded-full py-1 pr-1.5 pl-3 transition-[translate,opacity] duration-250 ease-[cubic-bezier(0.32,0.72,0,1)] md:hidden",
+            mobileSheetOpen
+              ? "translate-y-4 opacity-0 pointer-events-none"
+              : "translate-y-0 opacity-100 pointer-events-auto",
+          ].join(" ")}
+        >
           <span className="max-w-28 truncate text-xs font-medium text-foreground">
             {selectedFurniture.name}
           </span>
@@ -402,8 +409,15 @@ export default function App() {
       )}
 
       {/* Mobile Bottom Floating Navigation Dock */}
-      {!is360 && !mobileSheetOpen && (
-        <div className="liquid-glass-pill fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 flex items-center gap-1 rounded-full p-1.5 md:hidden">
+      {!is360 && (
+        <div
+          className={[
+            "liquid-glass-pill fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 flex items-center gap-1 rounded-full p-1.5 transition-[translate,opacity] duration-250 ease-[cubic-bezier(0.32,0.72,0,1)] md:hidden",
+            mobileSheetOpen
+              ? "translate-y-6 opacity-0 pointer-events-none"
+              : "translate-y-0 opacity-100 pointer-events-auto",
+          ].join(" ")}
+        >
           {(
             [
               { id: "2d", label: "2D", icon: Grid2x2 },

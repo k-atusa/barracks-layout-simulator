@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   Box,
   Check,
@@ -82,6 +82,58 @@ export function InspectorSidebar({
   const [resetOpen, setResetOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  // Mobile bottom-sheet drag-to-dismiss state
+  const [dragOffsetY, setDragOffsetY] = useState(0)
+  const [isDraggingSheet, setIsDraggingSheet] = useState(false)
+  const dragPointerIdRef = useRef<number | null>(null)
+  const dragStartYRef = useRef(0)
+  const dragStartTimeRef = useRef(0)
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      setDragOffsetY(0)
+      setIsDraggingSheet(false)
+      dragPointerIdRef.current = null
+    }
+  }, [mobileOpen])
+
+  const handleSheetDragStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!mobileOpen) return
+    if ((e.target as HTMLElement).closest("button")) return
+    if (dragPointerIdRef.current !== null) return
+
+    dragPointerIdRef.current = e.pointerId
+    dragStartYRef.current = e.clientY
+    dragStartTimeRef.current = performance.now()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    setIsDraggingSheet(true)
+    setDragOffsetY(0)
+  }
+
+  const handleSheetDragMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerId !== dragPointerIdRef.current) return
+    const dy = e.clientY - dragStartYRef.current
+    // 1:1 follow downward, subtle rubber-band resistance upward
+    const nextOffset = dy >= 0 ? dy : Math.max(-18, dy * 0.16)
+    setDragOffsetY(nextOffset)
+  }
+
+  const handleSheetDragEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerId !== dragPointerIdRef.current) return
+    dragPointerIdRef.current = null
+
+    const dy = e.clientY - dragStartYRef.current
+    const elapsed = Math.max(1, performance.now() - dragStartTimeRef.current)
+    const velocity = dy / elapsed // px/ms
+
+    setIsDraggingSheet(false)
+    setDragOffsetY(0)
+
+    if (dy > 90 || (dy > 32 && velocity > 0.45)) {
+      onMobileClose()
+    }
+  }
+
   const [roomW, setRoomW] = useState(String(state.room.width))
   const [roomD, setRoomD] = useState(String(state.room.depth))
   const [roomH, setRoomH] = useState(String(state.room.height))
@@ -117,67 +169,89 @@ export function InspectorSidebar({
     }
   }
 
+  const backdropOpacity = !mobileOpen
+    ? 0
+    : isDraggingSheet && dragOffsetY > 0
+      ? Math.max(0, 1 - dragOffsetY / 300)
+      : 1
+
   return (
     <>
       {/* Mobile Bottom Sheet Backdrop */}
-      {mobileOpen && (
-        <div
-          aria-hidden="true"
-          onClick={onMobileClose}
-          className="fixed inset-0 z-30 bg-black/18 backdrop-blur-[2px] dark:bg-black/45 md:hidden"
-        />
-      )}
+      <div
+        aria-hidden="true"
+        onClick={onMobileClose}
+        style={{ opacity: backdropOpacity }}
+        className={[
+          "fixed inset-0 z-30 bg-black/18 backdrop-blur-[2px] dark:bg-black/45 md:hidden",
+          isDraggingSheet ? "transition-none" : "transition-opacity duration-300 ease-out",
+          mobileOpen ? "pointer-events-auto" : "pointer-events-none",
+        ].join(" ")}
+      />
 
       <aside
-        className={[
-          "liquid-glass-panel fixed z-40 flex-col overflow-hidden rounded-2xl",
-          // Mobile: slide-up bottom sheet
-          mobileOpen
-            ? "inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] flex max-h-[78dvh]"
-            : "hidden",
-          // Desktop: fixed floating right sidebar
-          "md:top-3 md:right-3 md:bottom-3 md:left-auto md:z-20 md:flex md:max-h-none md:w-[296px]",
-        ].join(" ")}
+        data-open={mobileOpen ? "true" : "false"}
+        data-dragging={isDraggingSheet ? "true" : "false"}
+        style={
+          isDraggingSheet
+            ? { transform: `translate3d(0, ${dragOffsetY}px, 0)` }
+            : undefined
+        }
+        className="liquid-glass-panel mobile-sheet-panel fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex max-h-[78dvh] flex-col overflow-hidden rounded-2xl will-change-transform md:top-3 md:right-3 md:bottom-3 md:left-auto md:z-20 md:max-h-none md:w-[296px]"
       >
-        {/* Mobile grab handle */}
-        <div className="relative z-10 flex shrink-0 justify-center pt-2 md:hidden">
-          <div className="h-1 w-9 rounded-full bg-foreground/20" />
-        </div>
-
-        {/* Sidebar Top: Brand + Theme Toggle (+ Mobile Close) */}
-        <div className="relative z-10 flex shrink-0 items-center justify-between px-4 pt-2.5 pb-2.5 md:pt-3.5">
-          <div className="flex items-center gap-2">
-            <Home className="size-4 text-foreground" />
-            <h1 className="text-sm font-semibold tracking-tight">Barracks Layout Simulator</h1>
+        {/* Mobile draggable handle + header region */}
+        <div
+          onPointerDown={handleSheetDragStart}
+          onPointerMove={handleSheetDragMove}
+          onPointerUp={handleSheetDragEnd}
+          onPointerCancel={handleSheetDragEnd}
+          className="relative z-10 shrink-0 touch-none select-none md:touch-auto"
+        >
+          {/* Mobile grab handle */}
+          <div className="flex cursor-grab justify-center pt-2.5 pb-1 active:cursor-grabbing md:hidden">
+            <div
+              className={[
+                "h-1.5 rounded-full transition-all duration-150",
+                isDraggingSheet ? "w-12 bg-foreground/40" : "w-10 bg-foreground/22",
+              ].join(" ")}
+            />
           </div>
-          <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={onToggleTheme}
-                    aria-label="Toggle theme"
-                    className="rounded-lg hover:bg-foreground/10"
-                  >
-                    {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-                  </Button>
-                }
-              />
-              <TooltipContent side="left">
-                Switch to {isDark ? "light" : "dark"} mode
-              </TooltipContent>
-            </Tooltip>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={onMobileClose}
-              aria-label="Close properties panel"
-              className="rounded-lg hover:bg-foreground/10 md:hidden"
-            >
-              <X className="size-4" />
-            </Button>
+
+          {/* Sidebar Top: Brand + Theme Toggle (+ Mobile Close) */}
+          <div className="flex items-center justify-between px-4 pt-1.5 pb-2.5 md:pt-3.5">
+            <div className="flex items-center gap-2">
+              <Home className="size-4 text-foreground" />
+              <h1 className="text-sm font-semibold tracking-tight">Barracks Layout Simulator</h1>
+            </div>
+            <div className="flex items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={onToggleTheme}
+                      aria-label="Toggle theme"
+                      className="rounded-lg hover:bg-foreground/10"
+                    >
+                      {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                    </Button>
+                  }
+                />
+                <TooltipContent side="left">
+                  Switch to {isDark ? "light" : "dark"} mode
+                </TooltipContent>
+              </Tooltip>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={onMobileClose}
+                aria-label="Close properties panel"
+                className="rounded-lg hover:bg-foreground/10 md:hidden"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
