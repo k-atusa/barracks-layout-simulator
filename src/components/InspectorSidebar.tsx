@@ -197,7 +197,7 @@ export function InspectorSidebar({
             ? { transform: `translate3d(0, ${dragOffsetY}px, 0)` }
             : undefined
         }
-        className="liquid-glass-panel mobile-sheet-panel fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex max-h-[78dvh] flex-col overflow-hidden rounded-2xl will-change-transform md:top-3 md:right-3 md:bottom-3 md:left-auto md:z-20 md:max-h-none md:w-[296px]"
+        className="liquid-glass-panel mobile-sheet-panel fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex h-[min(80dvh,680px)] flex-col overflow-hidden rounded-2xl will-change-transform md:top-3 md:right-3 md:bottom-3 md:left-auto md:z-20 md:h-auto md:w-[296px]"
       >
         {/* Mobile draggable handle + header region */}
         <div
@@ -295,7 +295,7 @@ export function InspectorSidebar({
         </div>
 
       <ScrollArea className="relative z-10 min-h-0 flex-1 overflow-hidden">
-        <div className="flex flex-col">
+        <div className="flex flex-col pb-4 md:pb-0">
           {/* Selected Furniture */}
           <section className="flex flex-col gap-3 p-4">
             <div className="flex items-center justify-between">
