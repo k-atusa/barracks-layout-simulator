@@ -115,6 +115,7 @@ export class BarracksSimulatorEngine {
   private canvas3D: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
   private onStateChange: (state: SimulatorStateSnapshot) => void
+  private onLayoutChange?: (layout: LayoutData) => void
 
   private dpr = window.devicePixelRatio || 1
   private canvas2DDisplayWidth = 0
@@ -200,7 +201,9 @@ export class BarracksSimulatorEngine {
     canvas2D: HTMLCanvasElement,
     canvas3D: HTMLCanvasElement,
     onStateChange: (state: SimulatorStateSnapshot) => void,
-    isDark = true
+    isDark = true,
+    initialLayout: LayoutData = DEFAULT_LAYOUT,
+    onLayoutChange?: (layout: LayoutData) => void
   ) {
     this.wrapper = wrapper
     this.canvas2D = canvas2D
@@ -211,6 +214,7 @@ export class BarracksSimulatorEngine {
     }
     this.ctx = context
     this.onStateChange = onStateChange
+    this.onLayoutChange = onLayoutChange
     this.isDark = isDark
 
     this.boundOnResize = () => this.onResize()
@@ -226,7 +230,7 @@ export class BarracksSimulatorEngine {
     this.setupCanvas()
     this.setup3D()
     this.setupEventListeners()
-    this.loadLayoutFromData(DEFAULT_LAYOUT)
+    this.loadLayoutFromData(initialLayout)
     this.fit2DView()
     this.render()
     this.emitState()
@@ -447,6 +451,7 @@ export class BarracksSimulatorEngine {
 
     this.render()
     this.emitState()
+    this.notifyLayoutChange()
   }
 
   setOption<K extends keyof SimulatorOptions>(key: K, value: SimulatorOptions[K]) {
@@ -514,6 +519,7 @@ export class BarracksSimulatorEngine {
     }
     this.render()
     this.emitState()
+    this.notifyLayoutChange()
   }
 
   updateSelectedRotation(degrees: number) {
@@ -528,6 +534,7 @@ export class BarracksSimulatorEngine {
     }
     this.render()
     this.emitState()
+    this.notifyLayoutChange()
   }
 
   rotateSelected(deltaDegrees: number) {
@@ -543,7 +550,7 @@ export class BarracksSimulatorEngine {
     this.emitState()
   }
 
-  exportLayout(): LayoutData {
+  getLayoutData(): LayoutData {
     return {
       room: {
         width: this.roomWidth,
@@ -557,6 +564,10 @@ export class BarracksSimulatorEngine {
         rotation: f.rotation.y,
       })),
     }
+  }
+
+  private notifyLayoutChange() {
+    this.onLayoutChange?.(this.getLayoutData())
   }
 
   loadLayoutFromData(layout: LayoutData): boolean {
@@ -594,6 +605,7 @@ export class BarracksSimulatorEngine {
 
     this.render()
     this.emitState()
+    this.notifyLayoutChange()
     return true
   }
 
@@ -616,6 +628,7 @@ export class BarracksSimulatorEngine {
 
     this.render()
     this.emitState()
+    this.notifyLayoutChange()
   }
 
   optimizeSpace() {
@@ -656,6 +669,7 @@ export class BarracksSimulatorEngine {
 
     this.render()
     this.emitState()
+    this.notifyLayoutChange()
   }
 
   private getEffectiveDimensions(furniture: FurnitureGroup) {
@@ -812,6 +826,7 @@ export class BarracksSimulatorEngine {
 
     this.render()
     this.emitState()
+    this.notifyLayoutChange()
   }
 
   private onMouseUp() {
@@ -823,6 +838,7 @@ export class BarracksSimulatorEngine {
         this.checkCollisions()
       }
       this.emitState()
+      this.notifyLayoutChange()
     }
 
     this.isDragging = false
@@ -1035,6 +1051,7 @@ export class BarracksSimulatorEngine {
     }
     this.render()
     this.emitState()
+    this.notifyLayoutChange()
   }
 
   private onKeyUp(e: KeyboardEvent) {

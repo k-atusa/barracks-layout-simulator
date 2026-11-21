@@ -15,6 +15,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { InspectorSidebar } from "@/components/InspectorSidebar"
+import { decodeLayoutFromSearch, syncLayoutToUrl } from "@/lib/layoutUrl"
 import {
   BarracksSimulatorEngine,
   DEFAULT_LAYOUT,
@@ -51,20 +52,39 @@ export default function App() {
   const isDark = resolvedTheme !== "light"
 
   const [simState, setSimState] = useState<SimulatorStateSnapshot>(INITIAL_STATE)
+  const urlSyncTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (!wrapperRef.current || !canvas2DRef.current || !canvas3DRef.current) return
+
+    const initialLayout = decodeLayoutFromSearch(window.location.search) ?? DEFAULT_LAYOUT
+    const scheduleUrlSync = (layout: LayoutData) => {
+      if (urlSyncTimerRef.current !== null) {
+        window.clearTimeout(urlSyncTimerRef.current)
+      }
+      urlSyncTimerRef.current = window.setTimeout(() => {
+        syncLayoutToUrl(layout)
+        urlSyncTimerRef.current = null
+      }, 200)
+    }
 
     const engine = new BarracksSimulatorEngine(
       wrapperRef.current,
       canvas2DRef.current,
       canvas3DRef.current,
       (snapshot) => setSimState(snapshot),
-      isDark
+      isDark,
+      initialLayout,
+      scheduleUrlSync
     )
     engineRef.current = engine
+    syncLayoutToUrl(engine.getLayoutData())
 
     return () => {
+      if (urlSyncTimerRef.current !== null) {
+        window.clearTimeout(urlSyncTimerRef.current)
+        urlSyncTimerRef.current = null
+      }
       engine.destroy()
       engineRef.current = null
     }
@@ -81,35 +101,35 @@ export default function App() {
     engineRef.current?.setViewMode(mode)
   }
 
-  const handleSaveLayout = () => {
-    const layout = engineRef.current?.exportLayout()
-    if (!layout) return
-    const blob = new Blob([JSON.stringify(layout, null, 2)], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `barracks-layout-${Date.now()}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-    toast.success("Layout saved as JSON.")
-  }
+  const handleCopyShareUrl = async (): Promise<boolean> => {
+    const layout = engineRef.current?.getLayoutData()
+    if (!layout) return false
 
-  const handleLoadLayoutFile = (file: File) => {
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      try {
-        const parsed = JSON.parse(String(event.target?.result)) as LayoutData
-        const ok = engineRef.current?.loadLayoutFromData(parsed)
-        if (ok) {
-          toast.success("Layout loaded successfully.")
-        } else {
-          toast.error("Invalid layout file format.")
-        }
-      } catch {
-        toast.error("Failed to parse layout JSON file.")
-      }
+    if (urlSyncTimerRef.current !== null) {
+      window.clearTimeout(urlSyncTimerRef.current)
+      urlSyncTimerRef.current = null
     }
-    reader.readAsText(file)
+    const shareUrl = syncLayoutToUrl(layout)
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl)
+      } else {
+        const textarea = document.createElement("textarea")
+        textarea.value = shareUrl
+        textarea.style.position = "fixed"
+        textarea.style.opacity = "0"
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand("copy")
+        document.body.removeChild(textarea)
+      }
+      toast.success("Share URL copied to clipboard.")
+      return true
+    } catch {
+      toast.error("Failed to copy URL. You can copy it directly from the address bar.")
+      return false
+    }
   }
 
   const handleAutoArrange = () => {
@@ -275,8 +295,7 @@ export default function App() {
           onApplyRoomSize={handleApplyRoomSize}
           onAutoArrange={handleAutoArrange}
           onOptimizeSpace={handleOptimizeSpace}
-          onSaveLayout={handleSaveLayout}
-          onLoadLayoutFile={handleLoadLayoutFile}
+          onCopyShareUrl={handleCopyShareUrl}
           onResetLayout={handleResetLayout}
         />
       )}

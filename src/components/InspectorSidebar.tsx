@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Box,
+  Check,
   Compass,
-  Download,
   Grid2x2,
   Home,
+  Link2,
   Moon,
   RotateCcw,
   RotateCw,
   Ruler,
   Sparkles,
   Sun,
-  Upload,
   Wand2,
   X,
 } from "lucide-react"
@@ -55,8 +55,7 @@ interface InspectorSidebarProps {
   onApplyRoomSize: (width: number, depth: number, height: number) => void
   onAutoArrange: () => void
   onOptimizeSpace: () => void
-  onSaveLayout: () => void
-  onLoadLayoutFile: (file: File) => void
+  onCopyShareUrl: () => Promise<boolean>
   onResetLayout: () => void
 }
 
@@ -73,12 +72,11 @@ export function InspectorSidebar({
   onApplyRoomSize,
   onAutoArrange,
   onOptimizeSpace,
-  onSaveLayout,
-  onLoadLayoutFile,
+  onCopyShareUrl,
   onResetLayout,
 }: InspectorSidebarProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [resetOpen, setResetOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const [roomW, setRoomW] = useState(String(state.room.width))
   const [roomD, setRoomD] = useState(String(state.room.depth))
@@ -368,76 +366,57 @@ export function InspectorSidebar({
                 <Sparkles className="size-3.5" />
                 Optimize
               </Button>
-            </div>
 
-            <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={onSaveLayout}
+                onClick={async () => {
+                  const ok = await onCopyShareUrl()
+                  if (ok) {
+                    setCopied(true)
+                    window.setTimeout(() => setCopied(false), 1800)
+                  }
+                }}
                 className="border-foreground/15 bg-foreground/8 hover:bg-foreground/14"
               >
-                <Download className="size-3.5" />
-                Save JSON
+                {copied ? <Check className="size-3.5 text-emerald-500" /> : <Link2 className="size-3.5" />}
+                {copied ? "Copied!" : "Share URL"}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                className="border-foreground/15 bg-foreground/8 hover:bg-foreground/14"
-              >
-                <Upload className="size-3.5" />
-                Load JSON
-              </Button>
+
+              <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
+                <AlertDialogTrigger
+                  render={
+                    <Button variant="destructive" size="sm" className="w-full">
+                      <RotateCcw className="size-3.5" />
+                      Reset Layout
+                    </Button>
+                  }
+                />
+                <AlertDialogContent size="sm" className="liquid-glass-panel border-0 ring-0">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Reset furniture layout?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This restores the default room dimensions and returns all existing furniture
+                      items to their initial positions.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="border-foreground/10 bg-foreground/[0.04]">
+                    <AlertDialogCancel className="border-foreground/15 bg-foreground/8 hover:bg-foreground/14">
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      onClick={() => {
+                        onResetLayout()
+                        setResetOpen(false)
+                      }}
+                    >
+                      Reset
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) {
-                  onLoadLayoutFile(file)
-                }
-                e.target.value = ""
-              }}
-            />
-
-            <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
-              <AlertDialogTrigger
-                render={
-                  <Button variant="destructive" size="sm" className="w-full">
-                    <RotateCcw className="size-3.5" />
-                    Reset Layout
-                  </Button>
-                }
-              />
-              <AlertDialogContent size="sm" className="liquid-glass-panel border-0 ring-0">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Reset furniture layout?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This restores the default room dimensions and returns all existing furniture
-                    items to their initial positions.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter className="border-foreground/10 bg-foreground/[0.04]">
-                  <AlertDialogCancel className="border-foreground/15 bg-foreground/8 hover:bg-foreground/14">
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    variant="destructive"
-                    onClick={() => {
-                      onResetLayout()
-                      setResetOpen(false)
-                    }}
-                  >
-                    Reset
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
           </section>
 
           <Separator className="bg-foreground/10" />
